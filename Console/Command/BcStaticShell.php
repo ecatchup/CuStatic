@@ -162,10 +162,16 @@ class BcStaticShell extends Shell {
 				$pagePath = str_replace('/', DS, $pageUrl);
 
 				switch ($content['Content']['type']):
+					case 'ContentFolder':
+						$url = $baseUrl . '/' . $pageUrl;
+						$path = $exportPath . $pagePath ;
+						$this->makeHtml($url, $path . 'index.html');
+						break;
+
 					case 'Page':
 						$url = $baseUrl . '/' . $pageUrl;
-						$path = $exportPath . $pagePath . '.html';
-						$this->makeHtml($url, $path);
+						$path = $exportPath . $pagePath;
+						$this->makeHtml($url, $path . '.html');
 						break;
 
 					case 'BlogContent':
@@ -186,29 +192,22 @@ class BcStaticShell extends Shell {
  						]);
 
 						// index
-						$url = $baseUrl . '/' . $pageUrl;
-						$path = $exportPath . $pagePath . 'index.html';
+						$targetUrl = 'index';
+						$targetPath = str_replace('/', DS, $targetUrl);
+						$url = $baseUrl . '/' . $pageUrl . $targetUrl;
+						$path = $exportPath . $pagePath . $targetPath;
 
 						$dir = new Folder($exportPath . $pagePath, 0777);
 						$dir->delete();
 
-						$this->makeHtml($url, $path);
+						$this->makeHtml($url, $path . '.html');
 
 						// index paging
 						$blogPostsCount = count($blogPosts);
-						if ($blogPostsCount > $listCount) {
-							$pageMax = ceil($blogPostsCount / $listCount);
-							for ($i = 2; $i <= $pageMax; $i++) {
-								$url = $baseUrl . '/' . $pageUrl . '/index/page:' . $i;
-								$path = $exportPath . $pagePath . 'index' . DS . $i . '.html';
-								$this->makeHtml($url, $path, $content['Content']['status']);
-							}
-						}
+						$this->makePagingHtml($blogPostsCount, $listCount, $url, $path);
 
 						// rss対応
-						$url = $baseUrl . '/' . $pageUrl . 'index.rss';
-						$path = $exportPath . $pagePath . 'index.rss';
-						$this->makeHtml($url, $path);
+						$this->makeHtml($url . '.rss', $path . '.rss');
 
 						// category
 						$this->BlogCategory->reduceAssociations(['BlogCategory', 'BlogPost']);
@@ -223,19 +222,12 @@ class BcStaticShell extends Shell {
 							$targetUrl = 'archives/category/' . $blogCategory['BlogCategory']['name'];
 							$targetPath = str_replace('/', DS, $targetUrl);
 							$url = $baseUrl . '/' . $pageUrl . $targetUrl;
-							$path = $exportPath . $pagePath . $targetPath . '.html';
-							$this->makeHtml($url, $path);
+							$path = $exportPath . $pagePath . $targetPath;
+							$this->makeHtml($url, $path . '.html');
 
 							// category paging
 							$blogPostsCount = count(Hash::extract($blogPosts, '{n}.BlogPost[blog_content_id=' . $content['Content']['entity_id'] . '][blog_category_id=' . $blogCategory['BlogCategory']['id'] . ']'));
-							if ($blogPostsCount > $listCount) {
-								$pageMax = ceil($blogPostsCount / $listCount);
-								for ($i = 2; $i <= $pageMax; $i++) {
-									$url = $baseUrl . '/' . $pageUrl . $targetUrl . '/page:' . $i;
-									$path = $exportPath . $pagePath . $targetPath . DS . $i . '.html';
-									$this->makeHtml($url, $path);
-								}
-							}
+							$this->makePagingHtml($blogPostsCount, $listCount, $url, $path);
 						}
 
 						// tags
@@ -251,30 +243,21 @@ class BcStaticShell extends Shell {
 								$targetUrl = 'archives/tag/' . $blogTag['BlogTag']['name'];
 								$targetPath = str_replace('/', DS, $targetUrl);
 								$url = $baseUrl . '/' . $pageUrl . $targetUrl;
-								$path = $exportPath . $pagePath . $targetPath . '.html';
-								$this->makeHtml($url, $path);
+								$path = $exportPath . $pagePath . $targetPath;
+								$this->makeHtml($url, $path . '.html');
 
 								// tags paging
 								$blogPostsCount = count(Hash::extract($blogTag['BlogPost'], '{n}[blog_content_id=' . $content['Content']['entity_id'] . ']'));
-								if ($blogPostsCount > $listCount) {
-									$pageMax = ceil($blogPostsCount / $listCount);
-									for ($i = 2; $i <= $pageMax; $i++) {
-										$url = $baseUrl . '/' . $pageUrl . $targetUrl . '/page:' . $i;
-										$path = $exportPath . $pagePath . $targetPath . DS . $i . '.html';
-										$this->makeHtml($url, $path);
-									}
-								}
+								$this->makePagingHtml($blogPostsCount, $listCount, $url, $path);
 							}
 						}
 
 						// date
 						$dateFormats = ['Y', 'Y/m', 'Y/m/d'];
 						foreach ($dateFormats as $dateFormat) {
-
 							$dateCount = array();
 							foreach ($blogPosts as $blogPost) {
-								$blogPost = $blogPost['BlogPost'];
-								$date = date($dateFormat, strtotime($blogPost['posts_date']));
+								$date = date($dateFormat, strtotime($blogPost['BlogPost']['posts_date']));
 								if (array_key_exists($date, $dateCount)) {
 									$dateCount[$date]++;
 								} else {
@@ -285,18 +268,11 @@ class BcStaticShell extends Shell {
 								$targetUrl = 'archives/date/' . $date;
 								$targetPath = str_replace('/', DS, $targetUrl);
 								$url = $baseUrl . '/' . $pageUrl . $targetUrl;
-								$path = $exportPath . $pagePath . $targetPath . '.html';
-								$this->makeHtml($url, $path);
+								$path = $exportPath . $pagePath . $targetPath;
+								$this->makeHtml($url, $path . '.html');
 
-								// date yyyy paging
-								if ($blogPostsCount > $listCount) {
-									$pageMax = ceil($blogPostsCount / $listCount);
-									for ($i = 2; $i <= $pageMax; $i++) {
-										$url = $baseUrl . '/' . $pageUrl . $targetUrl . '/page:' . $i;
-										$path = $exportPath . $pagePath . $targetPath . DS . $i . '.html';
-										$this->makeHtml($url, $path);
-									}
-								}
+								// date paging
+								$this->makePagingHtml($blogPostsCount, $listCount, $url, $path);
 							}
 						}
 
@@ -306,19 +282,12 @@ class BcStaticShell extends Shell {
 							$targetUrl = 'archives/author/' . $user['User']['name'];
 							$targetPath = str_replace('/', DS, $targetUrl);
 							$url = $baseUrl . '/' . $pageUrl . $targetUrl;
-							$path = $exportPath . $pagePath . $targetPath . '.html';
-							$this->makeHtml($url, $path);
+							$path = $exportPath . $pagePath . $targetPath;
+							$this->makeHtml($url, $path . '.html');
 
 							// author paging
 							$blogPostsCount = count(Hash::extract($blogPosts, '{n}.BlogPost[blog_content_id=' . $content['Content']['entity_id'] . '][user_id=' . $user['User']['id'] . ']'));
-							if ($blogPostsCount > $listCount) {
-								$pageMax = ceil($blogPostsCount / $listCount);
-								for ($i = 2; $i <= $pageMax; $i++) {
-									$url = $baseUrl . '/' . $pageUrl . $targetUrl . '/page:' . $i;
-									$path = $exportPath . $pagePath . $targetPath . DS . $i . '.html';
-									$this->makeHtml($url, $path);
-								}
-							}
+							$this->makePagingHtml($blogPostsCount, $listCount, $url, $path);
 						}
 
 						// single
@@ -332,8 +301,8 @@ class BcStaticShell extends Shell {
 							$targetUrl = 'archives/' . $blogPost['BlogPost']['no'];
 							$targetPath = str_replace('/', DS, $targetUrl);
 							$url = $baseUrl . '/' . $pageUrl . $targetUrl;
-							$path = $exportPath . $pagePath . $targetPath . '.html';
-							$this->makeHtml($url, $path);
+							$path = $exportPath . $pagePath . $targetPath;
+							$this->makeHtml($url, $path . '.html');
 						}
 
 						break;
@@ -343,6 +312,19 @@ class BcStaticShell extends Shell {
 
 				endswitch;
 
+			}
+		}
+
+	}
+
+	private function makePagingHtml($blogPostsCount, $listCount, $targetUrl, $targetPath) {
+
+		if ($blogPostsCount > $listCount) {
+			$pageMax = ceil($blogPostsCount / $listCount);
+			for ($i = 2; $i <= $pageMax; $i++) {
+				$url = $targetUrl . '/page:' . $i;
+				$path = $targetPath . DS . $i . '.html';
+				$this->makeHtml($url, $path);
 			}
 		}
 
