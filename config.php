@@ -1,5 +1,5 @@
 <?php
-$title = 'BcStatic';
+$title = '静的コンテンツ書出';
 $description = '動的なコンテンツから静的なHTMLを生成します。';
 $author = 'kaburk';
 $url = 'https://blog.kaburk.com/';
