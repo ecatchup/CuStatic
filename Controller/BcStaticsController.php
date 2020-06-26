@@ -4,12 +4,14 @@ class BcStaticsController extends AppController {
 	public $uses = [
 		'Content',
 		'Site',
+		'BcStatic.BcStaticConfig',
 	];
 
 	public $components = [
 		'BcAuth',
 		'Cookie',
-		'BcAuthConfigure'
+		'BcAuthConfigure',
+		'BcMessage',
 	];
 
 	/**
@@ -22,14 +24,36 @@ class BcStaticsController extends AppController {
 			$cmd = CakePlugin::path('BcStatic') . 'Shell' . DS . $command;
 			$this->log($cmd, LOG_BCSTATIC);
 			exec($cmd);
-			$this->setMessage('書き出し開始しました。');
+			$this->BcMessage->setSuccess(__d('baser', '書き出し開始しました。'));
 			$this->redirect('index');
 		}
 		$this->pageTitle = '静的コンテンツ書出';
 
 	}
 
-	public function admin_tail($lines = 30) {
+	/**
+	 * [ADMIN] config
+	 */
+	public function admin_config() {
+
+		if ($this->request->data) {
+			$this->BcStaticConfig->set($this->request->data);
+			if (!$this->BcStaticConfig->validates()) {
+				$this->BcMessage->setError(__d('baser', '入力エラーです。内容を修正してください。'));
+			} else {
+				$this->BcStaticConfig->saveKeyValue($this->request->data);
+				$this->BcMessage->setSuccess(__d('baser', 'オプション設定を保存しました。'));
+				$this->redirect('config');
+			}
+		}
+		$this->pageTitle = 'オプション設定';
+
+	}
+
+	/**
+	 * [ADMIN] log tail
+	 */
+	public function admin_tail($limit = 2500) {
 
 		$this->autoRender = false;
 
@@ -37,11 +61,16 @@ class BcStaticsController extends AppController {
 
 		if (!file_exists($file)) return;
 
-		$a = 500;
-		$b = 10;
-		$c = $a * $b;
-		$x = file_get_contents($file, false, null, filesize($file) - $c);
-		$lines = explode("\n", $x);
+		if ($limit == -1) {
+			$lines = file($file);
+		} else {
+			// $a = 250;
+			// $b = 10;
+			// $c = $a * $b;
+			$x = file_get_contents($file, false, null, filesize($file) - $limit);
+			$lines = explode("\n", $x);
+		}
+
 		return implode('<br>', $lines);
 	}
 }

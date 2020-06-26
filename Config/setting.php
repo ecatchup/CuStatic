@@ -15,8 +15,7 @@ CakeLog::config(
 );
 
 $config['BcStatic'] = [
-	// 'exportPath' => TMP . 'static' . DS,
-	'exportPath' => ROOT  . DS . '..' . DS . 'basercms4-html' . DS,
+	'exportPath' => TMP . 'static' . DS,
 	'baseUrl' => '',
 	'command' => 'exec.sh > /dev/null 2>&1 &',
 	'plugins' => [
@@ -29,18 +28,32 @@ $config['BcStatic'] = [
  * システムナビ
  */
 $config['BcApp.adminNavigation'] = [
-	'Plugins' => [
-		'menus' => [
-			'BcStatic' => [
-				'title' => __d('baser', '静的コンテンツ書出'),
-				'url' => [
-					'admin' => true,
-					'plugin' => 'bc_static',
-					'controller' => 'bc_statics',
-					'action' => 'index'
-				]
+	'Contents' => [
+		'BcStatic' => [
+			'title' => __d('baser', '静的コンテンツ書出'),
+			'type' => 'bc_static',
+			'icon' => 'bca-icon--bc_static',
+			'menus' => [
+				'BcStatic' => [
+					'title' => __d('baser', '静的コンテンツ書出'),
+					'url' => [
+						'admin' => true,
+						'plugin' => 'bc_static',
+						'controller' => 'bc_statics',
+						'action' => 'index'
+					],
+				],
+				'BcStaticConfig' => [
+					'title' => __d('baser', 'オプション設定'),
+					'url' => [
+						'admin' => true,
+						'plugin' => 'bc_static',
+						'controller' => 'bc_statics',
+						'action' => 'config'
+					],
+				],
 			],
-		]
+		],
 	],
 ];
 

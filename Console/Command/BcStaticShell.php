@@ -15,6 +15,7 @@ class BcStaticShell extends Shell {
 		'Blog.BlogPost',
 		'Blog.BlogCategory',
 		'Blog.BlogTag',
+		'BcStatic.BcStaticConfig',
 	);
 
 	/**
@@ -41,9 +42,14 @@ class BcStaticShell extends Shell {
 	private function exportHtml() {
 
 		$siteConfig = Configure::read('BcSite');
+		$bcStaticConfig = $this->BcStaticConfig->findExpanded();
 
 		// 書き出し先のフォルダ
-		$exportPath = Configure::read('BcStatic.exportPath');
+		$exportPath = $bcStaticConfig['exportPath'];
+		if (empty($exportPath)) {
+			$exportPath = Configure::read('BcStatic.exportPath');
+		}
+
 		$exportFolder = new Folder($exportPath);
 		if (file_exists($exportPath)) {
 			$exportFolder->delete();
