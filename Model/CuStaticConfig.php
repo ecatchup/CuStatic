@@ -1,8 +1,8 @@
 <?php
 
-class BcStaticConfig extends BlogAppModel {
+class CuStaticConfig extends BlogAppModel {
 
-	public $name = 'BcStaticConfig';
+	public $name = 'CuStaticConfig';
 
 	public $actsAs = [
 		'BcCache',

@@ -1,7 +1,7 @@
 <?php
-class BcStaticConfigsSchema extends CakeSchema {
+class CuStaticConfigsSchema extends CakeSchema {
 
-	public $file = 'bc_static_configs.php';
+	public $file = 'cu_static_configs.php';
 
 	public function before($event = array()) {
 		return true;
@@ -10,7 +10,7 @@ class BcStaticConfigsSchema extends CakeSchema {
 	public function after($event = array()) {
 	}
 
-	public $bc_static_configs = array(
+	public $cu_static_configs = array(
 		'id' => array('type' => 'integer', 'null' => false, 'default' => null, 'unsigned' => false, 'key' => 'primary'),
 		'name' => array('type' => 'string', 'null' => true, 'default' => null),
 		'value' => array('type' => 'text', 'null' => true, 'default' => null),

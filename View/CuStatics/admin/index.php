@@ -1,6 +1,6 @@
 <section class="bca-section" data-bca-section-type='form-group'>
 
-<?php echo $this->BcForm->create('BcStatic', ['type' => 'file']) ?>
+<?php echo $this->BcForm->create('CuStatic', ['type' => 'file']) ?>
 
 	<?php echo $this->BcFormTable->dispatchBefore() ?>
 
@@ -53,7 +53,7 @@ $(function(){
 	$('#btnTail').trigger('click');
 
 	function run(){
-		$('#console').load('/admin/bc_static/bc_statics/tail');
+		$('#console').load('/admin/cu_static/cu_statics/tail');
 		$('#console').animate({scrollTop: $('#console')[0].scrollHeight}, 'fast');
 	}
 });

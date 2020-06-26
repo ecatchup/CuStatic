@@ -1,5 +1,5 @@
 <?php
-class BcStaticShell extends Shell {
+class CuStaticShell extends Shell {
 
 	/**
 	 * モデル
@@ -15,7 +15,7 @@ class BcStaticShell extends Shell {
 		'Blog.BlogPost',
 		'Blog.BlogCategory',
 		'Blog.BlogTag',
-		'BcStatic.BcStaticConfig',
+		'CuStatic.CuStaticConfig',
 	);
 
 	/**
@@ -30,9 +30,9 @@ class BcStaticShell extends Shell {
 	 */
 	public function main() {
 
-		$this->log('[ExportDynamicHtml] Start ===================================================', LOG_BCSTATIC);
+		$this->log('[ExportDynamicHtml] Start ===================================================', LOG_CUSTATIC);
 		$this->exportHtml();
-		$this->log('[ExportDynamicHtml] End   ===================================================', LOG_BCSTATIC);
+		$this->log('[ExportDynamicHtml] End   ===================================================', LOG_CUSTATIC);
 
 	}
 
@@ -42,12 +42,12 @@ class BcStaticShell extends Shell {
 	private function exportHtml() {
 
 		$siteConfig = Configure::read('BcSite');
-		$bcStaticConfig = $this->BcStaticConfig->findExpanded();
+		$CuStaticConfig = $this->CuStaticConfig->findExpanded();
 
 		// 書き出し先のフォルダ
-		$exportPath = $bcStaticConfig['exportPath'];
+		$exportPath = $CuStaticConfig['exportPath'];
 		if (empty($exportPath)) {
-			$exportPath = Configure::read('BcStatic.exportPath');
+			$exportPath = Configure::read('CuStatic.exportPath');
 		}
 
 		$exportFolder = new Folder($exportPath);
@@ -56,15 +56,15 @@ class BcStaticShell extends Shell {
 		}
 		$exportFolder->create($exportPath, 0777);
 
-		$this->log('exportPath: ' . $exportPath, LOG_BCSTATIC);
+		$this->log('exportPath: ' . $exportPath, LOG_CUSTATIC);
 
 		// ベースとなるURL作成
-		$baseUrl = Configure::read('BcStatic.baseUrl');
+		$baseUrl = Configure::read('CuStatic.baseUrl');
 		if (empty($baseUrl)) {
 			$baseUrl = Configure::read('BcEnv.siteUrl');
 		}
 		$baseUrl = rtrim($baseUrl, '/');
-		$this->log('baseUrl: ' . $baseUrl, LOG_BCSTATIC);
+		$this->log('baseUrl: ' . $baseUrl, LOG_CUSTATIC);
 
 		// ===================================================
 		// Plugin内webrootファイル対応
@@ -73,7 +73,7 @@ class BcStaticShell extends Shell {
 		// 有効化しているプラグイン一覧
 		// $enablePlugins = getEnablePlugins();
 		// $enablePlugins = Hash::extract($enablePlugins, '{n}.Plugin.name');
-		$enablePlugins = Configure::read('BcStatic.plugins');
+		$enablePlugins = Configure::read('CuStatic.plugins');
 
 		// インストールされているプラグインフォルダ
 		$pluginFolders = [
@@ -100,7 +100,7 @@ class BcStaticShell extends Shell {
 							'scheme' => Folder::OVERWRITE,
 							'recursive' => true,
 						]);
-						$this->log('copy: ' . $exportPath . $pluginPath, LOG_BCSTATIC);
+						$this->log('copy: ' . $exportPath . $pluginPath, LOG_CUSTATIC);
 					}
 				}
 			}
@@ -131,7 +131,7 @@ class BcStaticShell extends Shell {
 				'scheme' => Folder::OVERWRITE,
 				'recursive' => true,
 			]);
-			$this->log('copy: ' . $exportPath . $staticFolder, LOG_BCSTATIC);
+			$this->log('copy: ' . $exportPath . $staticFolder, LOG_CUSTATIC);
 		}
 
 		// ===================================================
@@ -341,8 +341,8 @@ class BcStaticShell extends Shell {
 	 */
 	private function makeHtml($url, $path)  {
 
-		$this->log('url: ' . $url, LOG_BCSTATIC);
-		$this->log('path: ' . $path, LOG_BCSTATIC);
+		$this->log('url: ' . $url, LOG_CUSTATIC);
+		$this->log('path: ' . $path, LOG_CUSTATIC);
 
 		// $getData = file_get_contents($url);
 
@@ -355,7 +355,7 @@ class BcStaticShell extends Shell {
 		curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);	//
 		$getData = curl_exec($ch);
 		if(curl_exec($ch) === false) {
-			$this->log('[makeHtml] Curl error: ' . curl_error($ch), LOG_BCSTATIC);
+			$this->log('[makeHtml] Curl error: ' . curl_error($ch), LOG_CUSTATIC);
 		}
 		curl_close($ch);
 

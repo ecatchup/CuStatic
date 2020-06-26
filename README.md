@@ -1,4 +1,4 @@
-BcStatic
+CuStatic
 ==========
 
 Documentation

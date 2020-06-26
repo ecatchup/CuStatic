@@ -1,3 +1,3 @@
 <?php
 
-$this->Plugin->initDb('BcStatic');
+$this->Plugin->initDb('CuStatic');

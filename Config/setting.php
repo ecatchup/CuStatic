@@ -1,20 +1,20 @@
 <?php
 /**
- * [Config] BcStatic
+ * [Config] CuStatic
  *
  */
-define('LOG_BCSTATIC', 'bc_static');
+define('LOG_CUSTATIC', 'cu_static');
 
 CakeLog::config(
-	'bc_static',
+	'cu_static',
 	[
 		'engine' => 'FileLog',
-		'types' => ['bc_static'],
-		'file' => 'bc_static',
+		'types' => ['cu_static'],
+		'file' => 'cu_static',
 	]
 );
 
-$config['BcStatic'] = [
+$config['CuStatic'] = [
 	'exportPath' => TMP . 'static' . DS,
 	'baseUrl' => '',
 	'command' => 'exec.sh > /dev/null 2>&1 &',
@@ -29,26 +29,26 @@ $config['BcStatic'] = [
  */
 $config['BcApp.adminNavigation'] = [
 	'Contents' => [
-		'BcStatic' => [
+		'CuStatic' => [
 			'title' => __d('baser', '静的コンテンツ書出'),
-			'type' => 'bc_static',
-			'icon' => 'bca-icon--bc_static',
+			'type' => 'cu_static',
+			'icon' => 'bca-icon--cu_static',
 			'menus' => [
-				'BcStatic' => [
+				'CuStatic' => [
 					'title' => __d('baser', '静的コンテンツ書出'),
 					'url' => [
 						'admin' => true,
-						'plugin' => 'bc_static',
-						'controller' => 'bc_statics',
+						'plugin' => 'cu_static',
+						'controller' => 'cu_statics',
 						'action' => 'index'
 					],
 				],
-				'BcStaticConfig' => [
+				'CuStaticConfig' => [
 					'title' => __d('baser', 'オプション設定'),
 					'url' => [
 						'admin' => true,
-						'plugin' => 'bc_static',
-						'controller' => 'bc_statics',
+						'plugin' => 'cu_static',
+						'controller' => 'cu_statics',
 						'action' => 'config'
 					],
 				],
@@ -57,15 +57,15 @@ $config['BcApp.adminNavigation'] = [
 	],
 ];
 
-$config['BcApp.adminNavi.BcStatic'] = [
+$config['BcApp.adminNavi.CuStatic'] = [
 	'name' => __d('baser', '静的コンテンツ書出プラグイン'),
 	'contents' => [
 		[
 			'name' => __d('baser', '静的コンテンツ書出'),
 			'url' => [
 				'admin' => true,
-				'plugin' => 'bc_static',
-				'controller' => 'bc_statics',
+				'plugin' => 'cu_static',
+				'controller' => 'cu_statics',
 				'action' => 'index',
 			],
 		],
