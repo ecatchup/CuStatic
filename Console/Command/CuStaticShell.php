@@ -30,9 +30,9 @@ class CuStaticShell extends Shell {
 	 */
 	public function main() {
 
-		$this->log('[ExportDynamicHtml] Start ===================================================', LOG_CUSTATIC);
+		$this->log('[exportHtml] Start ===================================================', LOG_CUSTATIC);
 		$this->exportHtml();
-		$this->log('[ExportDynamicHtml] End   ===================================================', LOG_CUSTATIC);
+		$this->log('[exportHtml] End   ===================================================', LOG_CUSTATIC);
 
 	}
 
@@ -44,8 +44,19 @@ class CuStaticShell extends Shell {
 		$siteConfig = Configure::read('BcSite');
 		$CuStaticConfig = $this->CuStaticConfig->findExpanded();
 
+		if ($CuStaticConfig['status']) {
+			$this->log('[exportHtml] Currently being processed. Suspend.', LOG_CUSTATIC);
+			return;
+		}
+
+		$CuStaticConfig['status'] = 1;
+		$CuStaticConfig['progress'] = 1;
+		$this->CuStaticConfig->saveKeyValue($CuStaticConfig);
+
 		// 書き出し先のフォルダ
 		$exportPath = $CuStaticConfig['exportPath'];
+		$exportPath = rtrim($exportPath, DS) . DS;
+
 		if (empty($exportPath)) {
 			$exportPath = Configure::read('CuStatic.exportPath');
 		}
@@ -134,6 +145,9 @@ class CuStaticShell extends Shell {
 			$this->log('copy: ' . $exportPath . $staticFolder, LOG_CUSTATIC);
 		}
 
+		$CuStaticConfig['progress']++;
+		$this->CuStaticConfig->saveKeyValue($CuStaticConfig);
+
 		// ===================================================
 		// コンテンツ管理テーブル
 		// ===================================================
@@ -163,24 +177,36 @@ class CuStaticShell extends Shell {
 				],
 				'recursive' => -1,
 			]);
+
 			foreach ($contents as $content) {
 				$pageUrl = ltrim($content['Content']['url'], '/');
 				$pagePath = str_replace('/', DS, $pageUrl);
 
 				switch ($content['Content']['type']):
 					case 'ContentFolder':
+						$CuStaticConfig['progress']++;
+						$this->CuStaticConfig->saveKeyValue($CuStaticConfig);
+
 						$url = $baseUrl . '/' . $pageUrl;
 						$path = $exportPath . $pagePath ;
 						$this->makeHtml($url, $path . 'index.html');
 						break;
 
 					case 'Page':
-						$url = $baseUrl . '/' . $pageUrl;
-						$path = $exportPath . $pagePath;
-						$this->makeHtml($url, $path . '.html');
+						$CuStaticConfig['progress']++;
+						$this->CuStaticConfig->saveKeyValue($CuStaticConfig);
+
+						if ($CuStaticConfig['page']) {
+							$url = $baseUrl . '/' . $pageUrl;
+							$path = $exportPath . $pagePath;
+							$this->makeHtml($url, $path . '.html');
+						}
 						break;
 
 					case 'BlogContent':
+						$CuStaticConfig['progress']++;
+						$this->CuStaticConfig->saveKeyValue($CuStaticConfig);
+
 						$blogContent = $this->BlogContent->find('first', [
 							'conditions' => [
 								'BlogContent.id' => $content['Content']['entity_id']
@@ -198,119 +224,132 @@ class CuStaticShell extends Shell {
  						]);
 
 						// index
-						$targetUrl = 'index';
-						$targetPath = str_replace('/', DS, $targetUrl);
-						$url = $baseUrl . '/' . $pageUrl . $targetUrl;
-						$path = $exportPath . $pagePath . $targetPath;
-
-						$dir = new Folder($exportPath . $pagePath, 0777);
-						$dir->delete();
-
-						$this->makeHtml($url, $path . '.html');
-
-						// index paging
-						$blogPostsCount = count($blogPosts);
-						$this->makePagingHtml($blogPostsCount, $listCount, $url, $path);
-
-						// rss対応
-						$this->makeHtml($url . '.rss', $path . '.rss');
-
-						// category
-						$this->BlogCategory->reduceAssociations(['BlogCategory', 'BlogPost']);
-						$this->BlogCategory->hasMany['BlogPost']['conditions'] = $conditionAllowPublish;
-						$blogCategories = $this->BlogCategory->find('all', [
-							'conditions' => [
-								'BlogCategory.blog_content_id' => $content['Content']['entity_id'],
-							],
-							'recursive' => -1,
-						]);
-						foreach ($blogCategories as $blogCategory) {
-							$targetUrl = 'archives/category/' . $blogCategory['BlogCategory']['name'];
+						if ($CuStaticConfig['blog_index']) {
+							$targetUrl = 'index';
 							$targetPath = str_replace('/', DS, $targetUrl);
 							$url = $baseUrl . '/' . $pageUrl . $targetUrl;
 							$path = $exportPath . $pagePath . $targetPath;
+
+							$dir = new Folder($exportPath . $pagePath, 0777);
+							$dir->delete();
+
 							$this->makeHtml($url, $path . '.html');
 
-							// category paging
-							$blogPostsCount = count(Hash::extract($blogPosts, '{n}.BlogPost[blog_content_id=' . $content['Content']['entity_id'] . '][blog_category_id=' . $blogCategory['BlogCategory']['id'] . ']'));
+							$blogPostsCount = count($blogPosts);
 							$this->makePagingHtml($blogPostsCount, $listCount, $url, $path);
+
+							// rss対応
+							$this->makeHtml($url . '.rss', $path . '.rss');
 						}
 
-						// tags
-						if ($blogContent['BlogContent']['tag_use']) {
-							$this->BlogTag->reduceAssociations(['BlogTag', 'BlogPost']);
-							$this->BlogTag->hasAndBelongsToMany['BlogPost']['conditions'] = $conditionAllowPublish;
-							$blogTags = $this->BlogTag->find('all', [
+						// category
+						if ($CuStaticConfig['blog_category']) {
+							$this->BlogCategory->reduceAssociations(['BlogCategory', 'BlogPost']);
+							$this->BlogCategory->hasMany['BlogPost']['conditions'] = $conditionAllowPublish;
+							$blogCategories = $this->BlogCategory->find('all', [
 								'conditions' => [
+									'BlogCategory.blog_content_id' => $content['Content']['entity_id'],
 								],
-								'recursive' => 2,
+								'recursive' => -1,
 							]);
-							foreach ($blogTags as $blogTag) {
-								$targetUrl = 'archives/tag/' . $blogTag['BlogTag']['name'];
+							foreach ($blogCategories as $blogCategory) {
+								$targetUrl = 'archives/category/' . $blogCategory['BlogCategory']['name'];
 								$targetPath = str_replace('/', DS, $targetUrl);
 								$url = $baseUrl . '/' . $pageUrl . $targetUrl;
 								$path = $exportPath . $pagePath . $targetPath;
 								$this->makeHtml($url, $path . '.html');
 
-								// tags paging
-								$blogPostsCount = count(Hash::extract($blogTag['BlogPost'], '{n}[blog_content_id=' . $content['Content']['entity_id'] . ']'));
+								// category paging
+								$blogPostsCount = count(Hash::extract($blogPosts, '{n}.BlogPost[blog_content_id=' . $content['Content']['entity_id'] . '][blog_category_id=' . $blogCategory['BlogCategory']['id'] . ']'));
 								$this->makePagingHtml($blogPostsCount, $listCount, $url, $path);
+							}
+						}
+
+						// tags
+						if ($CuStaticConfig['blog_tag']) {
+							if ($blogContent['BlogContent']['tag_use']) {
+								$this->BlogTag->reduceAssociations(['BlogTag', 'BlogPost']);
+								$this->BlogTag->hasAndBelongsToMany['BlogPost']['conditions'] = $conditionAllowPublish;
+								$blogTags = $this->BlogTag->find('all', [
+									'conditions' => [
+									],
+									'recursive' => 2,
+								]);
+								foreach ($blogTags as $blogTag) {
+									$targetUrl = 'archives/tag/' . $blogTag['BlogTag']['name'];
+									$targetPath = str_replace('/', DS, $targetUrl);
+									$url = $baseUrl . '/' . $pageUrl . $targetUrl;
+									$path = $exportPath . $pagePath . $targetPath;
+									$this->makeHtml($url, $path . '.html');
+
+									// tags paging
+									$blogPostsCount = count(Hash::extract($blogTag['BlogPost'], '{n}[blog_content_id=' . $content['Content']['entity_id'] . ']'));
+									$this->makePagingHtml($blogPostsCount, $listCount, $url, $path);
+								}
 							}
 						}
 
 						// date
-						$dateFormats = ['Y', 'Y/m', 'Y/m/d'];
-						foreach ($dateFormats as $dateFormat) {
-							$dateCount = array();
-							foreach ($blogPosts as $blogPost) {
-								$date = date($dateFormat, strtotime($blogPost['BlogPost']['posts_date']));
-								if (array_key_exists($date, $dateCount)) {
-									$dateCount[$date]++;
-								} else {
-									$dateCount[$date] = 1;
+						$dateFormats = [];
+						if ($CuStaticConfig['blog_date_year']) $dateFormats[] = 'Y';
+						if ($CuStaticConfig['blog_date_month']) $dateFormats[] = 'Y/m';
+						if ($CuStaticConfig['blog_date_day']) $dateFormats[] = 'Y/m/d';
+						if ($dateFormats) {
+							foreach ($dateFormats as $dateFormat) {
+								$dateCount = array();
+								foreach ($blogPosts as $blogPost) {
+									$date = date($dateFormat, strtotime($blogPost['BlogPost']['posts_date']));
+									if (array_key_exists($date, $dateCount)) {
+										$dateCount[$date]++;
+									} else {
+										$dateCount[$date] = 1;
+									}
+								}
+								foreach ($dateCount as $date => $blogPostsCount) {
+									$targetUrl = 'archives/date/' . $date;
+									$targetPath = str_replace('/', DS, $targetUrl);
+									$url = $baseUrl . '/' . $pageUrl . $targetUrl;
+									$path = $exportPath . $pagePath . $targetPath;
+									$this->makeHtml($url, $path . '.html');
+
+									// date paging
+									$this->makePagingHtml($blogPostsCount, $listCount, $url, $path);
 								}
 							}
-							foreach ($dateCount as $date => $blogPostsCount) {
-								$targetUrl = 'archives/date/' . $date;
+						}
+
+						// author
+						if ($CuStaticConfig['blog_author']) {
+							$users = $this->User->find('all');
+							foreach ($users as $user) {
+								$targetUrl = 'archives/author/' . $user['User']['name'];
 								$targetPath = str_replace('/', DS, $targetUrl);
 								$url = $baseUrl . '/' . $pageUrl . $targetUrl;
 								$path = $exportPath . $pagePath . $targetPath;
 								$this->makeHtml($url, $path . '.html');
 
-								// date paging
+								// author paging
+								$blogPostsCount = count(Hash::extract($blogPosts, '{n}.BlogPost[blog_content_id=' . $content['Content']['entity_id'] . '][user_id=' . $user['User']['id'] . ']'));
 								$this->makePagingHtml($blogPostsCount, $listCount, $url, $path);
 							}
 						}
 
-						// author
-						$users = $this->User->find('all');
-						foreach ($users as $user) {
-							$targetUrl = 'archives/author/' . $user['User']['name'];
-							$targetPath = str_replace('/', DS, $targetUrl);
-							$url = $baseUrl . '/' . $pageUrl . $targetUrl;
-							$path = $exportPath . $pagePath . $targetPath;
-							$this->makeHtml($url, $path . '.html');
-
-							// author paging
-							$blogPostsCount = count(Hash::extract($blogPosts, '{n}.BlogPost[blog_content_id=' . $content['Content']['entity_id'] . '][user_id=' . $user['User']['id'] . ']'));
-							$this->makePagingHtml($blogPostsCount, $listCount, $url, $path);
-						}
-
 						// single
-						$blogPosts = $this->BlogPost->find('all', [
-							'conditions' => [
-								'BlogPost.blog_content_id' => $content['Content']['entity_id'],
-								$conditionAllowPublish,
-							],
- 						]);
-						foreach ($blogPosts as $blogPost) {
-							$targetUrl = 'archives/' . $blogPost['BlogPost']['no'];
-							$targetPath = str_replace('/', DS, $targetUrl);
-							$url = $baseUrl . '/' . $pageUrl . $targetUrl;
-							$path = $exportPath . $pagePath . $targetPath;
-							$this->makeHtml($url, $path . '.html');
+						if ($CuStaticConfig['blog_single']) {
+							$blogPosts = $this->BlogPost->find('all', [
+								'conditions' => [
+									'BlogPost.blog_content_id' => $content['Content']['entity_id'],
+									$conditionAllowPublish,
+								],
+							]);
+							foreach ($blogPosts as $blogPost) {
+								$targetUrl = 'archives/' . $blogPost['BlogPost']['no'];
+								$targetPath = str_replace('/', DS, $targetUrl);
+								$url = $baseUrl . '/' . $pageUrl . $targetUrl;
+								$path = $exportPath . $pagePath . $targetPath;
+								$this->makeHtml($url, $path . '.html');
+							}
 						}
-
 						break;
 
 					default:
@@ -319,6 +358,10 @@ class CuStaticShell extends Shell {
 				endswitch;
 
 			}
+
+			$CuStaticConfig['status'] = 0;
+			$CuStaticConfig['progress']++;
+			$this->CuStaticConfig->saveKeyValue($CuStaticConfig);
 		}
 
 	}

@@ -20,6 +20,7 @@
 							'maxlength' => 255,
 							'default' => WWW_ROOT . 'html' . DS,
 							'autofocus' => true,
+							'class' => 'bca-textbox__input',
 						]
 					);
 				?>
@@ -30,6 +31,96 @@
 						<li><?php echo __d('baser', 'HTMLファイルなどの出力先を指定します。') ?></li>
 					</ul>
 				</div>
+			</td>
+		</tr>
+		<tr>
+			<th class="col-head bca-form-table__label">
+				<?php echo $this->BcForm->label('CuStaticConfig.page', __d('baser', '出力対象：固定ページ')) ?>
+			</th>
+			<td class="col-input bca-form-table__input">
+				<?php
+					echo $this->BcForm->input(
+						'CuStaticConfig.page',
+						[
+							'type' => 'checkbox',
+							'label' => '固定ページ',
+						]
+					);
+				?>
+				<?php echo $this->BcForm->error('CuStaticConfig.page'); ?>
+			</td>
+		</tr>
+		<tr>
+			<th class="col-head bca-form-table__label">
+				<?php echo $this->BcForm->label('CuStaticConfig.blog', __d('baser', '出力対象：ブログ')) ?>
+			</th>
+			<td class="col-input bca-form-table__input">
+				<?php
+					echo $this->BcForm->input(
+						'CuStaticConfig.blog_index',
+						[
+							'type' => 'checkbox',
+							'label' => '記事一覧',
+						]
+					);
+					echo $this->BcForm->input(
+						'CuStaticConfig.blog_category',
+						[
+							'type' => 'checkbox',
+							'label' => 'カテゴリ一覧',
+						]
+					);
+					echo $this->BcForm->input(
+						'CuStaticConfig.blog_tag',
+						[
+							'type' => 'checkbox',
+							'label' => 'タグ一覧',
+						]
+					);
+					echo $this->BcForm->input(
+						'CuStaticConfig.blog_date_year',
+						[
+							'type' => 'checkbox',
+							'label' => '年別一覧',
+						]
+					);
+					echo $this->BcForm->input(
+						'CuStaticConfig.blog_date_month',
+						[
+							'type' => 'checkbox',
+							'label' => '年月別一覧',
+						]
+					);
+					echo $this->BcForm->input(
+						'CuStaticConfig.blog_date_day',
+						[
+							'type' => 'checkbox',
+							'label' => '年月別一覧',
+						]
+					);
+					echo $this->BcForm->input(
+						'CuStaticConfig.blog_author',
+						[
+							'type' => 'checkbox',
+							'label' => '作者一覧',
+						]
+					);
+					echo $this->BcForm->input(
+						'CuStaticConfig.blog_single',
+						[
+							'type' => 'checkbox',
+							'label' => '記事詳細',
+						]
+					);
+				?>
+				<?php echo $this->BcForm->error('CuStaticConfig.blog_index'); ?>
+				<?php echo $this->BcForm->error('CuStaticConfig.blog_category'); ?>
+				<?php echo $this->BcForm->error('CuStaticConfig.blog_tag'); ?>
+				<?php echo $this->BcForm->error('CuStaticConfig.blog_date_year'); ?>
+				<?php echo $this->BcForm->error('CuStaticConfig.blog_date_month'); ?>
+				<?php echo $this->BcForm->error('CuStaticConfig.blog_date_day'); ?>
+				<?php echo $this->BcForm->error('CuStaticConfig.blog_author'); ?>
+				<?php echo $this->BcForm->error('CuStaticConfig.blog_single'); ?>
 			</td>
 		</tr>
 
