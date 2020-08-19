@@ -91,22 +91,27 @@ $(function(){
 				'plugin' => 'cu_static',
 				'controller' => 'cu_statics',
 				'action' => 'get_status',
-			]); ?>'
+			]); ?>',
+			cache: false
 		}).done(function( result ) {
 			var data = $.parseJSON(result);
+			data.status = Number(data.status);
+			data.progress = Number(data.progress);
+			data.progress_max = Number(data.progress_max);
 			if (data.status == 1) {
 				$('#status').show();
 			} else {
 				$('#status').hide();
 			}
+
 			$('#status_progres').val(data.progress);
 			$('#status_progres').attr('max', data.progress_max);
 			if (data.progress >= data.progress_max) {
 				$('#status_message').html('完了');
-			} else if (data.progress <= 0) {
+			} else if (data.progress <= '0') {
 				$('#status_message').html('');
 			} else {
-				$('#status_message').html('処理中');
+				$('#status_message').html('処理中 (' + data.progress + '/' + data.progress_max + ')');
 			}
 		});
 	}

@@ -14,17 +14,8 @@ class CuStaticsController extends AppController {
 		'BcMessage',
 	];
 
-	public $progress_max = 0;
-
-	public function beforeFilter() {
+		public function beforeFilter() {
 		parent::beforeFilter();
-		$this->progress_max = $this->Content->find('count', [
-			'conditions' => [
-				'type' => ['Page', 'Folder', 'BlogContent'],
-				'status' => true,
-			],
-			'recursive' => -1,
-		]);
 	}
 
 	/**
@@ -76,7 +67,7 @@ class CuStaticsController extends AppController {
 		$CuStaticConfig = $this->CuStaticConfig->findExpanded();
 		$result['status'] = $CuStaticConfig['status'];
 		$result['progress'] = $CuStaticConfig['progress'];
-		$result['progress_max'] = $this->progress_max;
+		$result['progress_max'] = $CuStaticConfig['progress_max'];
 
 		return json_encode($result);
 	}

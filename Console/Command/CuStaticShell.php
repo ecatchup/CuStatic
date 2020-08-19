@@ -49,9 +49,38 @@ class CuStaticShell extends Shell {
 			return;
 		}
 
-		$CuStaticConfig['status'] = 1;
-		$CuStaticConfig['progress'] = 1;
-		$this->CuStaticConfig->saveKeyValue($CuStaticConfig);
+		// Progressbar Max計算: Page * 1 + Folder * 1 + Blog * 6 + (css,js,img,files) * 2
+		$progress = 0;
+		$progressMax = 0;
+		$siteIds = $this->Site->find('list', [
+			'fields' => [
+				'id',
+			],
+			'conditions' => [
+				'status' => true,
+			],
+			'recursive' => -1,
+		]);
+		$siteIds[] = 0; // メインサイトのIDを追加
+		$contents = $this->Content->find('list', [
+			'fields' => ['id', 'type'],
+			'conditions' => [
+				'site_id' => $siteIds,
+				'self_status' => true,
+				'type' => ['Page', 'ContentFolder', 'BlogContent'],
+			],
+			'recursive' => -1,
+		]);
+		foreach($contents as $content) {
+			if ($content == 'BlogContent') {
+				$progressMax = $progressMax + 6;
+			} else {
+				$progressMax = $progressMax + 1;
+			}
+		}
+		$progressMax = $progressMax + 2;
+
+		$this->setProgressBarStatus(1);
 
 		// 書き出し先のフォルダ
 		$exportPath = $CuStaticConfig['exportPath'];
@@ -90,7 +119,7 @@ class CuStaticShell extends Shell {
 		$pluginFolders = [
 			BASER_PLUGINS,
 			APP . 'Plugin' . DS,
-			WWW_ROOT . 'theme' . DS . $siteConfig['theme'] . DS . 'Plugin' . DS,
+			ROOT . DS . 'theme' . DS . $siteConfig['theme'] . DS . 'Plugin' . DS,
 		];
 
 		foreach ($pluginFolders as $pluginFolder) {
@@ -111,11 +140,13 @@ class CuStaticShell extends Shell {
 							'scheme' => Folder::OVERWRITE,
 							'recursive' => true,
 						]);
-						$this->log('copy: ' . $exportPath . $pluginPath, LOG_CUSTATIC);
+						$this->log('Copy From: ' . $path, LOG_CUSTATIC);
+						$this->log('Copy To  : ' . $exportPath . $pluginPath, LOG_CUSTATIC);
 					}
 				}
 			}
 		}
+		$this->setProgressBar(++$progress, $progressMax);
 
 		// ===================================================
 		// 静的コンテンツ(css,js,img,files)
@@ -131,7 +162,7 @@ class CuStaticShell extends Shell {
 			'theme' . DS . $siteConfig['theme'] . DS . 'files',
 		];
 		foreach ($staticFolders as $staticFolder) {
-			$path = WWW_ROOT . $staticFolder . DS;
+			$path = ROOT . DS . $staticFolder . DS;
 			$folder = new Folder($path);
 			$folder->copy([
 				'mode' => 0755,
@@ -142,11 +173,11 @@ class CuStaticShell extends Shell {
 				'scheme' => Folder::OVERWRITE,
 				'recursive' => true,
 			]);
-			$this->log('copy: ' . $exportPath . $staticFolder, LOG_CUSTATIC);
+			$this->log('Copy From: ' . $path, LOG_CUSTATIC);
+			$this->log('Copy To  : ' . $exportPath . $staticFolder, LOG_CUSTATIC);
 		}
 
-		$CuStaticConfig['progress']++;
-		$this->CuStaticConfig->saveKeyValue($CuStaticConfig);
+		$this->setProgressBar(++$progress, $progressMax);
 
 		// ===================================================
 		// コンテンツ管理テーブル
@@ -170,42 +201,40 @@ class CuStaticShell extends Shell {
 				'conditions' => [
 					'site_id' => $siteId,
 					'status' => true,
+					'type' => ['Page', 'ContentFolder', 'BlogContent'],
 				],
 				'order' => [
+					'site_id' => 'ASC',
+					'type' => 'ASC',
 					'lft' => 'ASC',
 					'rght' => 'ASC',
 				],
 				'recursive' => -1,
 			]);
-
 			foreach ($contents as $content) {
 				$pageUrl = ltrim($content['Content']['url'], '/');
 				$pagePath = str_replace('/', DS, $pageUrl);
 
 				switch ($content['Content']['type']):
 					case 'ContentFolder':
-						$CuStaticConfig['progress']++;
-						$this->CuStaticConfig->saveKeyValue($CuStaticConfig);
 
 						$url = $baseUrl . '/' . $pageUrl;
 						$path = $exportPath . $pagePath ;
 						$this->makeHtml($url, $path . 'index.html');
+						$this->setProgressBar(++$progress, $progressMax);
 						break;
 
 					case 'Page':
-						$CuStaticConfig['progress']++;
-						$this->CuStaticConfig->saveKeyValue($CuStaticConfig);
 
 						if ($CuStaticConfig['page']) {
 							$url = $baseUrl . '/' . $pageUrl;
 							$path = $exportPath . $pagePath;
 							$this->makeHtml($url, $path . '.html');
 						}
+						$this->setProgressBar(++$progress, $progressMax);
 						break;
 
 					case 'BlogContent':
-						$CuStaticConfig['progress']++;
-						$this->CuStaticConfig->saveKeyValue($CuStaticConfig);
 
 						$blogContent = $this->BlogContent->find('first', [
 							'conditions' => [
@@ -240,7 +269,9 @@ class CuStaticShell extends Shell {
 
 							// rss対応
 							$this->makeHtml($url . '.rss', $path . '.rss');
+
 						}
+						$this->setProgressBar(++$progress, $progressMax);
 
 						// category
 						if ($CuStaticConfig['blog_category']) {
@@ -264,6 +295,7 @@ class CuStaticShell extends Shell {
 								$this->makePagingHtml($blogPostsCount, $listCount, $url, $path);
 							}
 						}
+						$this->setProgressBar(++$progress, $progressMax);
 
 						// tags
 						if ($CuStaticConfig['blog_tag']) {
@@ -288,6 +320,7 @@ class CuStaticShell extends Shell {
 								}
 							}
 						}
+						$this->setProgressBar(++$progress, $progressMax);
 
 						// date
 						$dateFormats = [];
@@ -317,6 +350,7 @@ class CuStaticShell extends Shell {
 								}
 							}
 						}
+						$this->setProgressBar(++$progress, $progressMax);
 
 						// author
 						if ($CuStaticConfig['blog_author']) {
@@ -333,6 +367,7 @@ class CuStaticShell extends Shell {
 								$this->makePagingHtml($blogPostsCount, $listCount, $url, $path);
 							}
 						}
+						$this->setProgressBar(++$progress, $progressMax);
 
 						// single
 						if ($CuStaticConfig['blog_single']) {
@@ -350,6 +385,7 @@ class CuStaticShell extends Shell {
 								$this->makeHtml($url, $path . '.html');
 							}
 						}
+						$this->setProgressBar(++$progress, $progressMax);
 						break;
 
 					default:
@@ -359,9 +395,7 @@ class CuStaticShell extends Shell {
 
 			}
 
-			$CuStaticConfig['status'] = 0;
-			$CuStaticConfig['progress']++;
-			$this->CuStaticConfig->saveKeyValue($CuStaticConfig);
+			$this->setProgressBarStatus(0);
 		}
 
 	}
@@ -618,4 +652,23 @@ class CuStaticShell extends Shell {
 
 		return $out;
 	}
+
+	private function setProgressBarStatus($status) {
+		$config = [];
+		$config['status'] = $status;
+		$this->CuStaticConfig->saveKeyValue($config);
+	}
+
+	private function setProgressBar($progress, $progressMax = null) {
+		$config = [];
+		$config['progress'] = $progress;
+		if ($progressMax != null) {
+			$config['progress_max'] = $progressMax;
+			$this->log('progress: ' . $progress . '/ ' . $progressMax, LOG_CUSTATIC);
+		} else {
+			$this->log('progress: ' . $progress, LOG_CUSTATIC);
+		}
+		$this->CuStaticConfig->saveKeyValue($config);
+	}
+
 }
