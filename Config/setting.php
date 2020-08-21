@@ -30,12 +30,12 @@ $config['CuStatic'] = [
 $config['BcApp.adminNavigation'] = [
 	'Contents' => [
 		'CuStatic' => [
-			'title' => __d('baser', '静的コンテンツ書出'),
+			'title' => __d('baser', '静的HTML出力'),
 			'type' => 'cu_static',
 			'icon' => 'bca-icon--file',
 			'menus' => [
 				'CuStatic' => [
-					'title' => __d('baser', '静的コンテンツ書出'),
+					'title' => __d('baser', '静的HTML出力'),
 					'url' => [
 						'admin' => true,
 						'plugin' => 'cu_static',
@@ -58,10 +58,10 @@ $config['BcApp.adminNavigation'] = [
 ];
 
 $config['BcApp.adminNavi.CuStatic'] = [
-	'name' => __d('baser', '静的コンテンツ書出プラグイン'),
+	'name' => __d('baser', '静的HTML出力プラグイン'),
 	'contents' => [
 		[
-			'name' => __d('baser', '静的コンテンツ書出'),
+			'name' => __d('baser', '静的HTML出力'),
 			'url' => [
 				'admin' => true,
 				'plugin' => 'cu_static',
