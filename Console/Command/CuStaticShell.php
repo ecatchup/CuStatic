@@ -110,6 +110,8 @@ class CuStaticShell extends Shell {
 		if ($baseDir == DS) {
 			$baseDir = ROOT;
 		}
+		$baseDir = rtrim($baseDir, DS) . DS;
+
 		// ===================================================
 		// Plugin内webrootファイル対応
 		// ===================================================
