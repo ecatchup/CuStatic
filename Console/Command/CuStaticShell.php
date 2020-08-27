@@ -44,7 +44,7 @@ class CuStaticShell extends Shell {
 		$siteConfig = Configure::read('BcSite');
 		$CuStaticConfig = $this->CuStaticConfig->findExpanded();
 
-		if ($CuStaticConfig['status']) {
+		if (isset($CuStaticConfig['status']) && $CuStaticConfig['status']) {
 			$this->log('[exportHtml] Currently being processed. Suspend.', LOG_CUSTATIC);
 			return;
 		}
@@ -106,6 +106,10 @@ class CuStaticShell extends Shell {
 		$baseUrl = rtrim($baseUrl, '/');
 		$this->log('baseUrl: ' . $baseUrl, LOG_CUSTATIC);
 
+		$baseDir = WWW_ROOT;
+		if ($baseDir == DS) {
+			$baseDir = ROOT;
+		}
 		// ===================================================
 		// Plugin内webrootファイル対応
 		// ===================================================
@@ -119,7 +123,7 @@ class CuStaticShell extends Shell {
 		$pluginFolders = [
 			BASER_PLUGINS,
 			APP . 'Plugin' . DS,
-			ROOT . DS . 'theme' . DS . $siteConfig['theme'] . DS . 'Plugin' . DS,
+			$baseDir . 'theme' . DS . $siteConfig['theme'] . DS . 'Plugin' . DS,
 		];
 
 		foreach ($pluginFolders as $pluginFolder) {
@@ -162,7 +166,7 @@ class CuStaticShell extends Shell {
 			'theme' . DS . $siteConfig['theme'] . DS . 'files',
 		];
 		foreach ($staticFolders as $staticFolder) {
-			$path = ROOT . DS . $staticFolder . DS;
+			$path = $baseDir . $staticFolder . DS;
 			$folder = new Folder($path);
 			$folder->copy([
 				'mode' => 0755,
