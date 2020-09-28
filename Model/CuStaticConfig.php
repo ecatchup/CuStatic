@@ -1,6 +1,6 @@
 <?php
 
-class CuStaticConfig extends BlogAppModel {
+class CuStaticConfig extends AppModel {
 
 	public $name = 'CuStaticConfig';
 
