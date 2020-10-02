@@ -100,8 +100,6 @@ $(function(){
 			data.progress_max = Number(data.progress_max);
 			if (data.status == 1) {
 				$('#status').show();
-			} else {
-				$('#status').hide();
 			}
 
 			$('#status_progres').val(data.progress);

@@ -28,7 +28,6 @@ class CuStaticsController extends AppController {
 			$cmd = CakePlugin::path('CuStatic') . 'Shell' . DS . $command;
 			$this->log($cmd, LOG_CUSTATIC);
 			exec($cmd);
-			$this->BcMessage->setSuccess(__d('baser', '書き出し開始しました。'));
 			$this->redirect('index');
 		}
 		$this->pageTitle = '静的HTML出力';

@@ -4,7 +4,6 @@
  *
  */
 define('LOG_CUSTATIC', 'cu_static');
-
 CakeLog::config(
 	'cu_static',
 	[
@@ -21,6 +20,12 @@ $config['CuStatic'] = [
 	'plugins' => [
 		'Blog',
 		'BurgerEditor',
+	],
+	'types' => [
+		'Page',
+		'ContentFolder',
+		'BlogContent',
+		'BlogPost',
 	]
 ];
 
