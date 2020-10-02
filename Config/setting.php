@@ -17,7 +17,7 @@ App::uses('CuStaticUtil', 'CuStatic.Lib');
 $config['CuStatic'] = [
 	'exportPath' => TMP . 'static' . DS,
 	'baseUrl' => '',
-	'command' => 'exec.sh > /dev/null 2>&1 &',
+	'command' => 'exec.sh %s > /dev/null 2>&1 &',
 	'plugins' => [
 		'Blog',
 		'BurgerEditor',

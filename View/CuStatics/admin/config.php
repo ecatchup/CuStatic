@@ -34,6 +34,168 @@
 				<p>※ 上記で指定したフォルダ内は、書き出し実行時にフォルダ内のフォルダやファイルをすべて削除後に書き出しを行います。</p>
 			</td>
 		</tr>
+
+<?php
+	foreach ($sites as $siteId => $siteName):
+		if (isset($blogContents[$siteId])) {
+			$blogContentsCount = count($blogContents[$siteId]);
+		} else {
+			$blogContentsCount = 0;
+		}
+?>
+		<tr>
+			<th class="col-head bca-form-table__label">
+				<?php echo $this->BcForm->label('CuStaticConfig.page', __d('baser', '出力対象：')) ?>
+				<?php echo $siteName ?>
+			</th>
+			<td class="col-input bca-form-table__input">
+
+				<table class="form-table bca-form-table">
+					<tr>
+						<td class="col-input bca-form-table__input">
+							<?php
+								$prefix = '_' . $siteId;
+								echo $this->BcForm->input(
+									'CuStaticConfig.folder' . $prefix,
+									[
+										'type' => 'checkbox',
+										'label' => 'フォルダ',
+										'default' => true,
+										'class' => 'bca-checkbox__input page' . $prefix,
+									]
+								);
+							?>
+							<?php echo $this->BcForm->error('CuStaticConfig.folder' . $prefix); ?>
+						</td>
+					</tr>
+					<tr>
+						<td class="col-input bca-form-table__input">
+							<?php
+								$prefix = '_' . $siteId;
+								echo $this->BcForm->input(
+									'CuStaticConfig.page' . $prefix,
+									[
+										'type' => 'checkbox',
+										'label' => '固定ページ',
+										'default' => true,
+										'class' => 'bca-checkbox__input page' . $prefix,
+									]
+								);
+							?>
+							<?php echo $this->BcForm->error('CuStaticConfig.page' . $prefix); ?>
+						</td>
+					</tr>
+					<?php
+						if (isset($blogContents[$siteId])):
+							foreach ($blogContents[$siteId] as $bloContentId => $blogName):
+								$prefix = '_' . $siteId . '_' . $bloContentId;
+					?>
+					<tr>
+						<td class="col-input bca-form-table__input">
+							<h4 class="blog_title<?php echo $prefix ?>"><?php echo $blogName ?></h4>
+							<script>
+								$(function(){
+									$('.blog_title<?php echo $prefix ?>').on('click', function() {
+										var checked = $('input.blog<?php echo $prefix ?>:first:checkbox').prop('checked');
+										$('.blog<?php echo $prefix ?>').prop('checked', !checked);
+										return false;
+									});
+								});
+							</script>
+							<?php
+								echo $this->BcForm->input(
+									'CuStaticConfig.blog_index' . $prefix,
+									[
+										'type' => 'checkbox',
+										'label' => '記事一覧',
+										'default' => true,
+										'class' => 'bca-checkbox__input blog' . $prefix,
+									]
+								);
+								echo $this->BcForm->input(
+									'CuStaticConfig.blog_category' . $prefix,
+									[
+										'type' => 'checkbox',
+										'label' => 'カテゴリ一覧',
+										'default' => true,
+										'class' => 'bca-checkbox__input blog' . $prefix,
+									]
+								);
+								echo $this->BcForm->input(
+									'CuStaticConfig.blog_tag' . $prefix,
+									[
+										'type' => 'checkbox',
+										'label' => 'タグ一覧',
+										'default' => true,
+										'class' => 'bca-checkbox__input blog' . $prefix,
+									]
+								);
+								echo $this->BcForm->input(
+									'CuStaticConfig.blog_date_year' . $prefix,
+									[
+										'type' => 'checkbox',
+										'label' => '年別一覧',
+										'default' => true,
+										'class' => 'bca-checkbox__input blog' . $prefix,
+									]
+								);
+								echo $this->BcForm->input(
+									'CuStaticConfig.blog_date_month' . $prefix,
+									[
+										'type' => 'checkbox',
+										'label' => '年月別一覧',
+										'default' => true,
+										'class' => 'bca-checkbox__input blog' . $prefix,
+									]
+								);
+								echo $this->BcForm->input(
+									'CuStaticConfig.blog_date_day' . $prefix,
+									[
+										'type' => 'checkbox',
+										'label' => '年月別一覧',
+										'default' => true,
+										'class' => 'bca-checkbox__input blog' . $prefix,
+									]
+								);
+								echo $this->BcForm->input(
+									'CuStaticConfig.blog_author' . $prefix,
+									[
+										'type' => 'checkbox',
+										'label' => '作者一覧',
+										'default' => true,
+										'class' => 'bca-checkbox__input blog' . $prefix,
+									]
+								);
+								echo $this->BcForm->input(
+									'CuStaticConfig.blog_single' . $prefix,
+									[
+										'type' => 'checkbox',
+										'label' => '記事詳細',
+										'default' => true,
+										'class' => 'bca-checkbox__input blog' . $prefix,
+									]
+								);
+							?>
+							<?php echo $this->BcForm->error('CuStaticConfig.blog_index' . $prefix); ?>
+							<?php echo $this->BcForm->error('CuStaticConfig.blog_category' . $prefix); ?>
+							<?php echo $this->BcForm->error('CuStaticConfig.blog_tag' . $prefix); ?>
+							<?php echo $this->BcForm->error('CuStaticConfig.blog_date_year' . $prefix); ?>
+							<?php echo $this->BcForm->error('CuStaticConfig.blog_date_month' . $prefix); ?>
+							<?php echo $this->BcForm->error('CuStaticConfig.blog_date_day' . $prefix); ?>
+							<?php echo $this->BcForm->error('CuStaticConfig.blog_author' . $prefix); ?>
+							<?php echo $this->BcForm->error('CuStaticConfig.blog_single' . $prefix); ?>
+						</td>
+					<?php
+							endforeach;
+						endif;
+					?>
+					</tr>
+				</table>
+
+			</td>
+		</tr>
+<?php endforeach; ?>
+<!--
 		<tr>
 			<th class="col-head bca-form-table__label">
 				<?php echo $this->BcForm->label('CuStaticConfig.page', __d('baser', '出力対象：固定ページ')) ?>
@@ -124,7 +286,7 @@
 				<?php echo $this->BcForm->error('CuStaticConfig.blog_single'); ?>
 			</td>
 		</tr>
-
+-->
 		<?php echo $this->BcForm->dispatchAfterForm('option') ?>
 
 	</table>

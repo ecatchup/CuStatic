@@ -24,12 +24,14 @@ class CuStaticsController extends AppController {
 	public function admin_index() {
 
 		if ($this->request->data) {
-			$command = Configure::read('CuStatic.command');
+			$command = sprintf(Configure::read('CuStatic.command'), 'main');
 			$cmd = CakePlugin::path('CuStatic') . 'Shell' . DS . $command;
 			$this->log($cmd, LOG_CUSTATIC);
 			exec($cmd);
 			$this->redirect('index');
 		}
+
+		$this->set('cuStaticConfigs', $this->CuStaticConfig->findExpanded());
 		$this->pageTitle = '静的HTML出力';
 
 	}
@@ -50,7 +52,41 @@ class CuStaticsController extends AppController {
 				$this->redirect('config');
 			}
 		} else {
+
 			$this->request->data['CuStaticConfig'] = $this->CuStaticConfig->findExpanded();
+
+			$sites = $this->Site->find('list', [
+				'fields' => [
+					'id',
+					'display_name',
+				],
+				'order' => [
+					'id' => 'ASC',
+				],
+			]);
+			$sites = array_merge(
+				[0 => $this->siteConfigs['main_site_display_name']],
+				$sites
+			);
+			$this->set('sites', $sites);
+
+			$blogContents = $this->Content->find('list', [
+				'fields' => [
+					'entity_id',
+					'title',
+					'site_id',
+				],
+				'conditions' => [
+					'plugin' => 'Blog',
+					'type' => 'BlogContent',
+				],
+				'order' => [
+					'site_id' => 'ASC',
+					'entity_id' => 'ASC',
+				],
+			]);
+			$this->set('blogContents', $blogContents);
+
 		}
 		$this->pageTitle = 'オプション設定';
 

@@ -1,7 +1,11 @@
 
 <section class="bca-section" data-bca-section-type='form-group'>
 
-<?php echo $this->BcForm->create('CuStatic', ['type' => 'file']) ?>
+<?php if (empty($cuStaticConfigs['exportPath'])): ?>
+		利用する前に [ <?php echo $this->BcBaser->link('オプション設定', ['action' => 'config']) ?> ] を行ってください。
+
+<?php else: ?>
+	<?php echo $this->BcForm->create('CuStatic', ['type' => 'file']) ?>
 
 	<?php echo $this->BcFormTable->dispatchBefore() ?>
 
@@ -16,19 +20,22 @@
 
 	<?php echo $this->BcFormTable->dispatchAfter() ?>
 
+
 	<section class="bca-actions">
 		<div class="bca-actions__main">
-			<?php echo $this->BcForm->submit(
-				__d('baser', 'HTML書出'),
-				[
-					'id' => 'BtnSave',
-					'div' => false,
-					'class' => 'button bca-btn bca-actions__item',
-					'data-bca-btn-type' => 'save',
-					'data-bca-btn-size' => 'lg',
-					'data-bca-btn-width' => 'lg',
-				]
-			) ?>
+			<?php
+				echo $this->BcForm->submit(
+					__d('baser', 'HTML書出'),
+					[
+						'id' => 'BtnSave',
+						'div' => false,
+						'class' => 'button bca-btn bca-actions__item',
+						'data-bca-btn-type' => 'save',
+						'data-bca-btn-size' => 'lg',
+						'data-bca-btn-width' => 'lg',
+					]
+				);
+			?>
 		</div>
 		<!-- div class="bca-actions__sub">
 			<?php
@@ -54,6 +61,8 @@
 	</div>
 
 	<?php echo $this->BcForm->end() ?>
+
+<?php endif; ?>
 
 </section>
 
@@ -109,7 +118,7 @@ $(function(){
 			} else if (data.progress <= '0') {
 				$('#status_message').html('');
 			} else {
-				$('#status_message').html('処理中 (' + data.progress + '/' + data.progress_max + ')');
+				$('#status_message').html('処理中 (' + parseInt((data.progress / data.progress_max) * 100, 10)  + ' %)');
 			}
 		});
 	}

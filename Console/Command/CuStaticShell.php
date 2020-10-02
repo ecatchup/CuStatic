@@ -29,14 +29,11 @@ class CuStaticShell extends Shell {
 	/**
 	 * 動的コンテンツ出力 全件対象
 	 */
-	public function main($siteId = null) {
+	public function main() {
 
 		$this->log('[exportHtml] main Start ===================================================', LOG_CUSTATIC);
 		$options = [];
 		$options['all'] = true;
-		if ($siteId) {
-			$options['siteIds'] = [$siteId];
-		}
 		$this->exportHtml($options);
 		$this->log('[exportHtml] main End   ===================================================', LOG_CUSTATIC);
 
@@ -45,18 +42,11 @@ class CuStaticShell extends Shell {
 	/**
 	 * 動的コンテンツ出力 差分対象（CRON同期など）
 	 */
-	public function diff($siteId = null) {
-
-		// Page
-		// BlogPost & BlogContent
-		// BlogContent (Category & Tag)
+	public function diff() {
 
 		$this->log('[exportHtml] diff Start ===================================================', LOG_CUSTATIC);
 		$options = [];
 		$options['all'] = false;
-		if ($siteId) {
-			$options['siteIds'] = [$siteId];
-		}
 		$this->exportHtml($options);
 		$this->log('[exportHtml] diff End   ===================================================', LOG_CUSTATIC);
 
@@ -113,16 +103,15 @@ class CuStaticShell extends Shell {
 
 		if ($options['all']) {
 			// 全ページ対象
-			$contents = $this->Content->find('list', [
+				$conditions = $this->Content->getConditionAllowPublish();
+				$conditions['site_id'] = $siteIds;
+				$conditions['type'] = $enableTypes;
+				$contents = $this->Content->find('list', [
 				'fields' => [
 					'id',
 					'type',
 				],
-				'conditions' => [
-					'site_id' => $siteIds,
-					'self_status' => true,
-					'type' => $enableTypes,
-				],
+				'conditions' => $conditions,
 				'recursive' => -1,
 			]);
 		} else {
@@ -292,7 +281,11 @@ class CuStaticShell extends Shell {
 					$status = true;
 				} elseif (isset($content['CuStaticContent'])) {
 					$content = $content['CuStaticContent'];
-					$status = $content['status'];
+					if ($content['type'] == 'BlogPost') {
+						$status = false; // データを取得後判別
+					} else {
+						$status = $this->Content->createUrl($content['content_id']);
+					}
 				}
 
 				$pageUrl = ltrim($content['url'], '/');
@@ -300,16 +293,18 @@ class CuStaticShell extends Shell {
 
 				switch ($content['type']):
 					case 'ContentFolder':
-
-						$url = $baseUrl . '/' . $pageUrl;
-						$path = $exportPath . $pagePath ;
-						$this->makeHtml($url, $path . 'index.html', $status);
+						$preifx = '_' . $siteId;
+						if ($CuStaticConfig['folder' . $preifx]) {
+							$url = $baseUrl . '/' . $pageUrl;
+							$path = $exportPath . $pagePath ;
+							$this->makeHtml($url, $path . 'index.html', $status);
+						}
 						$this->setProgressBar(++$progress, $progressMax);
 						break;
 
 					case 'Page':
-
-						if ($CuStaticConfig['page']) {
+						$preifx = '_' . $siteId;
+						if ($CuStaticConfig['page' . $preifx]) {
 							$url = $baseUrl . '/' . $pageUrl;
 							$path = $exportPath . $pagePath;
 							$this->makeHtml($url, $path . '.html', $status);
@@ -318,7 +313,7 @@ class CuStaticShell extends Shell {
 						break;
 
 					case 'BlogContent':
-
+						$preifx = '_' . $siteId  . '_' . $content['entity_id'];
 						$blogContent = $this->BlogContent->find('first', [
 							'conditions' => [
 								'BlogContent.id' => $content['entity_id']
@@ -336,7 +331,7 @@ class CuStaticShell extends Shell {
 						 ]);
 
 						// index
-						if ($CuStaticConfig['blog_index']) {
+						if ($CuStaticConfig['blog_index' . $preifx]) {
 							$targetUrl = 'index';
 							$targetPath = str_replace('/', DS, $targetUrl);
 							$url = $baseUrl . '/' . $pageUrl . $targetUrl;
@@ -357,7 +352,7 @@ class CuStaticShell extends Shell {
 						$this->setProgressBar(++$progress, $progressMax);
 
 						// category
-						if ($CuStaticConfig['blog_category']) {
+						if ($CuStaticConfig['blog_category' . $preifx]) {
 							$this->BlogCategory->reduceAssociations(['BlogCategory', 'BlogPost']);
 							$this->BlogCategory->hasMany['BlogPost']['conditions'] = $conditionAllowPublish;
 							$blogCategories = $this->BlogCategory->find('all', [
@@ -381,7 +376,7 @@ class CuStaticShell extends Shell {
 						$this->setProgressBar(++$progress, $progressMax);
 
 						// tags
-						if ($CuStaticConfig['blog_tag']) {
+						if ($CuStaticConfig['blog_tag' . $preifx]) {
 							if ($blogContent['BlogContent']['tag_use']) {
 								$this->BlogTag->reduceAssociations(['BlogTag', 'BlogPost']);
 								$this->BlogTag->hasAndBelongsToMany['BlogPost']['conditions'] = $conditionAllowPublish;
@@ -407,9 +402,9 @@ class CuStaticShell extends Shell {
 
 						// date
 						$dateFormats = [];
-						if ($CuStaticConfig['blog_date_year']) $dateFormats[] = 'Y';
-						if ($CuStaticConfig['blog_date_month']) $dateFormats[] = 'Y/m';
-						if ($CuStaticConfig['blog_date_day']) $dateFormats[] = 'Y/m/d';
+						if ($CuStaticConfig['blog_date_year' . $preifx]) $dateFormats[] = 'Y';
+						if ($CuStaticConfig['blog_date_month' . $preifx]) $dateFormats[] = 'Y/m';
+						if ($CuStaticConfig['blog_date_day' . $preifx]) $dateFormats[] = 'Y/m/d';
 						if ($dateFormats) {
 							foreach ($dateFormats as $dateFormat) {
 								$dateCount = array();
@@ -436,7 +431,7 @@ class CuStaticShell extends Shell {
 						$this->setProgressBar(++$progress, $progressMax);
 
 						// author
-						if ($CuStaticConfig['blog_author']) {
+						if ($CuStaticConfig['blog_author' . $preifx]) {
 							$users = $this->User->find('all');
 							foreach ($users as $user) {
 								$targetUrl = 'archives/author/' . $user['User']['name'];
@@ -453,7 +448,7 @@ class CuStaticShell extends Shell {
 						$this->setProgressBar(++$progress, $progressMax);
 
 						// single
-						if ($options['all'] && $CuStaticConfig['blog_single']) {
+						if ($options['all'] && $CuStaticConfig['blog_single' . $preifx]) {
 							$blogPosts = $this->BlogPost->find('all', [
 								'conditions' => [
 									'BlogPost.blog_content_id' => $content['entity_id'],
@@ -473,14 +468,16 @@ class CuStaticShell extends Shell {
 						break;
 
 					case 'BlogPost':
-						if ($CuStaticConfig['blog_single']) {
+						$preifx = '_' . $siteId  . '_' . $content['content_id'];
+						if ($CuStaticConfig['blog_single'. $preifx]) {
 							$blogPost = $this->BlogPost->find('first', [
 								'conditions' => [
 									'BlogPost.blog_content_id' => $content['content_id'],
 									'BlogPost.id' => $content['entity_id'],
 								],
 							]);
-							$targetUrl = 'archives/' . $blogPost['BlogPost']['no'];
+							$status = $this->BlogPost->allowPublish($blogPost);
+							$targetUrl = '';
 							$targetPath = str_replace('/', DS, $targetUrl);
 							$url = $baseUrl . '/' . $pageUrl . $targetUrl;
 							$path = $exportPath . $pagePath . $targetPath;
