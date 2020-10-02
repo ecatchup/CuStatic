@@ -66,6 +66,8 @@ class CuStaticShell extends Shell {
 			return;
 		}
 
+		$now = date('Y-m-d H:i:s');
+
 		$options = array_merge([
 			'all' => true,
 			'siteIds' => null,
@@ -254,7 +256,6 @@ class CuStaticShell extends Shell {
 					'conditions' => $conditions,
 					'order' => [
 						'site_id' => 'ASC',
-						'type' => 'ASC',
 						'lft' => 'ASC',
 						'rght' => 'ASC',
 					],
@@ -268,7 +269,6 @@ class CuStaticShell extends Shell {
 					],
 					'order' => [
 						'site_id' => 'ASC',
-						'type' => 'ASC',
 						'id' => 'ASC',
 					],
 					'recursive' => -1,
@@ -284,7 +284,12 @@ class CuStaticShell extends Shell {
 					if ($content['type'] == 'BlogPost') {
 						$status = false; // データを取得後判別
 					} else {
-						$status = $this->Content->createUrl($content['content_id']);
+						if (empty($content['url'])) {
+							$content['url'] = $this->Content->createUrl($content['content_id']);
+							$this->CuStaticContent->id = $content['id'];
+							$this->CuStaticContent->saveField('url', $content['url']);
+						}
+						$status = $this->Content->findByUrl($content['url']);
 					}
 				}
 
@@ -490,10 +495,61 @@ class CuStaticShell extends Shell {
 
 				endswitch;
 
-			}
+				if (!$options['all']) {
+					// CuStaticContent のデータを整理
+					$publishBegin = '0000-00-00 00:00:00';
+					$publishEnd = '0000-00-00 00:00:00';
 
-			if (!$options['all']) {
-				// TODO: CuStaticContent のデータを整理
+					switch ($content['type']):
+						case 'BlogPost':
+							$data = $this->BlogPost->find('first', [
+								'conditions' => [
+									'blog_content_id' => $content['content_id'],
+									'id' => $content['entity_id'],
+								],
+								'recursive' => -1,
+							]);
+							if (!empty($data['BlogPost']['publish_begin'])) {
+								$publishBegin = date('Y-m-d H:i:s', strtotime($data['BlogPost']['publish_begin']));
+							}
+							if (!empty($data['BlogPost']['publish_end'])) {
+								$publishEnd = date('Y-m-d H:i:s', strtotime($data['BlogPost']['publish_end']));
+							}
+							break;
+						default:
+							$data = $this->Content->find('first', [
+								'conditions' => [
+									'name' => $content['name'],
+									'plugin' => $content['plugin'],
+									'type' => $content['type'],
+									'entity_id' => $content['entity_id'],
+								],
+								'recursive' => -1,
+							]);
+							if (!empty($data['Content']['publish_begin'])) {
+								$publishBegin = date('Y-m-d H:i:s', strtotime($data['Content']['publish_begin']));
+							}
+							if (!empty($data['Content']['publish_end'])) {
+								$publishEnd = date('Y-m-d H:i:s', strtotime($data['Content']['publish_end']));
+							}
+							break;
+					endswitch;
+
+					// 処理した時間より未来の日時で公開期間が設定されている時はデータを残す（次回差分実行で処理）
+					if ($publishBegin < $now && $publishEnd < $now) {
+						$deleteFlag = true;
+					} elseif ($publishBegin < $now && $publishEnd == '0000-00-00 00:00:00') {
+						$deleteFlag = true;
+					} elseif ($publishBegin == '0000-00-00 00:00:00' && $publishEnd < $now ) {
+						$deleteFlag = true;
+					} else {
+						$deleteFlag = false;
+					}
+					if ($deleteFlag) {
+						$this->CuStaticContent->delete($content['id']);
+					}
+				}
+
 			}
 
 			$this->setProgressBarStatus(0);

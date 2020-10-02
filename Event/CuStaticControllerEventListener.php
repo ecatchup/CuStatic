@@ -11,43 +11,41 @@ class CuStaticControllerEventListener extends BcControllerEventListener {
 		'Pages.afterEdit',
 		'Blog.BlogPosts.afterAdd',
 		'Blog.BlogPosts.afterEdit',
-
-		// 'Contents.afterAdd',
-		// 'Contents.afterEdit',
 		'Contents.afterMove',
 		'Contents.afterChangeStatus',
 		'Contents.beforeDelete',
+		// 'Contents.afterAdd',
+		// 'Contents.afterEdit',
 		// 'ContentFolders.afterAdd',
 		// 'ContentFolders.afterEdit',
-		// 'ContentLinks.afterAdd',
-		// 'ContentLinks.afterEdit',
 	);
 
 	/**
 	 * 固定ページ：新規作成
 	 */
 	public function pagesAfterAdd(CakeEvent $event) {
-
-		if (!BcUtil::isAdminSystem()) {
-			return;
-		}
-
-		$data = CuStaticUtil::getContentsData($event->data['data']);
-		CuStaticUtil::setContentsData($data);
-
-		return true;
+		return $this->pagesAfterProc($event);
 	}
 
 	/**
 	 * 固定ページ：編集
 	 */
 	public function pagesAfterEdit(CakeEvent $event) {
+		return $this->pagesAfterProc($event);
+	}
+
+	/**
+	 * 固定ページ：共通処理
+	 */
+	private function pagesAfterProc(CakeEvent $event) {
 
 		if (!BcUtil::isAdminSystem()) {
 			return;
 		}
 
-		$data = CuStaticUtil::getContentsData($event->data['data']);
+		$modelData = $event->data['data'];
+
+		$data = CuStaticUtil::getContentsData($modelData);
 		CuStaticUtil::setContentsData($data);
 
 		return true;
@@ -57,6 +55,20 @@ class CuStaticControllerEventListener extends BcControllerEventListener {
 	 * ブログ記事：新規作成
 	 */
 	public function blogBlogPostsAfterAdd(CakeEvent $event) {
+		return $this->blogBlogPostsAfterProc($event);
+	}
+
+	/**
+	 * ブログ記事：編集
+	 */
+	public function blogBlogPostsAfterEdit(CakeEvent $event) {
+		return $this->blogBlogPostsAfterProc($event);
+	}
+
+	/**
+	 * ブログ編集：共通処理
+	 */
+	private function blogBlogPostsAfterProc(CakeEvent $event) {
 
 		if (!BcUtil::isAdminSystem()) {
 			return;
@@ -65,57 +77,37 @@ class CuStaticControllerEventListener extends BcControllerEventListener {
 		$Controller = $event->subject();
 		$modelData = $event->data['data'];
 		$modelData['Content'] = $Controller->request->params['Content'];
+
 		$data = CuStaticUtil::getContentsData($modelData);
+		CuStaticUtil::setContentsData($data);
+
 		$data['type'] = 'BlogPost';
 		$data['content_id'] = $modelData['BlogPost']['blog_content_id'];
 		$data['entity_id'] = $modelData['BlogPost']['id'];
 		$data['url'] .= 'arcives/' . $modelData['BlogPost']['no'];
 		CuStaticUtil::setContentsData($data);
 
-		return true;
-	}
-
-	/**
-	 * ブログ記事：編集
-	 */
-	public function blogBlogPostsAfterEdit(CakeEvent $event) {
-
-		if (!BcUtil::isAdminSystem()) {
-			return true;
+		// 設定画面で指定されている追加のURLの処理
+		$CuStaticConfigModel = ClassRegistry::init('CuStatic.CuStaticConfig');
+		$CuStaticConfig = $CuStaticConfigModel->findExpanded();
+		$prefix = sprintf('_%s_%s', $data['site_id'], $data['content_id']);
+		if (isset($CuStaticConfig['blog_callback' . $prefix])) {
+			$blogCallback = preg_replace("/\r\n|\r|\n/", PHP_EOL, $CuStaticConfig['blog_callback' . $prefix]);
+			$urls = explode(PHP_EOL, $blogCallback);
+			$ContentModel = ClassRegistry::init('Content');
+			foreach($urls as $url) {
+				$modelData = $ContentModel->find('first', [
+					'conditions' => [
+						'url' => $url,
+					],
+					'recursive' => -1,
+				]);
+				$data = CuStaticUtil::getContentsData($modelData);
+				CuStaticUtil::setContentsData($data);
+			}
 		}
-
-		$Controller = $event->subject();
-		$modelData = $event->data['data'];
-		$modelData['Content'] = $Controller->request->params['Content'];
-		$data = CuStaticUtil::getContentsData($modelData);
-		$data['type'] = 'BlogPost';
-		$data['content_id'] = $modelData['BlogPost']['blog_content_id'];
-		$data['entity_id'] = $modelData['BlogPost']['id'];
-		$data['url'] .= 'arcives/' . $modelData['BlogPost']['no'];
-		CuStaticUtil::setContentsData($data);
-
 		return true;
 	}
-
-	// public function contentsAfterAdd(CakeEvent $event) {
-	// 	if (!BcUtil::isAdminSystem()) {
-	// 		return;
-	// 	}
-	// 	$this->log(['contentsAfterAdd', $event->data]);
-	// 	$data = CuStaticUtil::getContentsData($event->data['data']);
-	// 	CuStaticUtil::setContentsData($data);
-	// 	return true;
-	// }
-
-	// public function contentsAfterEdit(CakeEvent $event) {
-	// 	if (!BcUtil::isAdminSystem()) {
-	// 		return;
-	// 	}
-	// 	$this->log(['contentsAfterEdit', $event->data]);
-	// 	$data = CuStaticUtil::getContentsData($event->data['data']);
-	// 	CuStaticUtil::setContentsData($data);
-	// 	return true;
-	// }
 
 	/**
 	 * コンテンツ管理：移動
@@ -126,9 +118,10 @@ class CuStaticControllerEventListener extends BcControllerEventListener {
 			return;
 		}
 
-		$ContentModel = ClassRegistry::init('Content');
 		$id = $event->data['data']['Content']['id'];
+		$ContentModel = ClassRegistry::init('Content');
 		$modelData = $ContentModel->read(null, $id);
+
 		$data = CuStaticUtil::getContentsData($modelData);
 		CuStaticUtil::setContentsData($data);
 
@@ -153,9 +146,10 @@ class CuStaticControllerEventListener extends BcControllerEventListener {
 			return;
 		}
 
-		$ContentModel = ClassRegistry::init('Content');
 		$id = $event->data['id'];
+		$ContentModel = ClassRegistry::init('Content');
 		$modelData = $ContentModel->read(null, $id);
+
 		$data = CuStaticUtil::getContentsData($modelData);
 		CuStaticUtil::setContentsData($data);
 
@@ -180,9 +174,10 @@ class CuStaticControllerEventListener extends BcControllerEventListener {
 			return true;
 		}
 
-		$ContentModel = ClassRegistry::init('Content');
 		$id = $event->data['data'];
+		$ContentModel = ClassRegistry::init('Content');
 		$modelData = $ContentModel->read(null, $id);
+
 		$data = CuStaticUtil::getContentsData($modelData);
 		CuStaticUtil::setContentsData($data);
 
@@ -198,24 +193,62 @@ class CuStaticControllerEventListener extends BcControllerEventListener {
 		return true;
 	}
 
-	// public function contentFoldersAfterAdd(CakeEvent $event) {
+	// public function contentsAfterAdd(CakeEvent $event) {
+
 	// 	if (!BcUtil::isAdminSystem()) {
 	// 		return;
 	// 	}
-	// 	$this->log(['contentFoldersAfterAdd', $event->data]);
-	// 	$data = CuStaticUtil::getContentsData($event->data['data']);
+
+	// 	$modelData = $event->data['data'];
+
+	// 	$data = CuStaticUtil::getContentsData($modelData);
 	// 	CuStaticUtil::setContentsData($data);
+
 	// 	return true;
 	// }
 
-	// public function contentFoldersAfterEdit(CakeEvent $event) {
+	// public function contentsAfterEdit(CakeEvent $event) {
+
 	// 	if (!BcUtil::isAdminSystem()) {
 	// 		return;
 	// 	}
-	// 	$this->log(['contentFoldersAfterEdit', $event->data]);
-	// 	$data = CuStaticUtil::getContentsData($event->data['data']);
+
+	// 	$modelData = $event->data['data'];
+
+	// 	$data = CuStaticUtil::getContentsData($modelData);
 	// 	CuStaticUtil::setContentsData($data);
+
 	// 	return true;
+	// }
+
+	// public function contentFoldersAfterAdd(CakeEvent $event) {
+
+	// 	if (!BcUtil::isAdminSystem()) {
+	// 		return;
+	// 	}
+
+	// 	$modelData = $event->data['data'];
+
+	// 	$data = CuStaticUtil::getContentsData($modelData);
+	// 	CuStaticUtil::setContentsData($data);
+
+	// 	return true;
+
+	// }
+
+	// public function contentFoldersAfterEdit(CakeEvent $event) {
+
+	// 	if (!BcUtil::isAdminSystem()) {
+	// 		return;
+	// 	}
+
+	// 	$modelData = $event->data['data'];
+
+	// 	$data = CuStaticUtil::getContentsData($modelData);
+	// 	CuStaticUtil::setContentsData($data);
+
+	// 	return true;
+
 	// }
 
 }

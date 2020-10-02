@@ -31,7 +31,9 @@
 						<li><?php echo __d('baser', 'HTMLファイルなどの出力先を指定します。') ?></li>
 					</ul>
 				</div>
-				<p>※ 上記で指定したフォルダ内は、書き出し実行時にフォルダ内のフォルダやファイルをすべて削除後に書き出しを行います。</p>
+				<p class="info">
+					※ 上記で指定したフォルダ内は、書き出し実行時にフォルダ内のフォルダやファイルをすべて削除後に書き出しを行います。
+				</p>
 			</td>
 		</tr>
 
@@ -185,11 +187,30 @@
 							<?php echo $this->BcForm->error('CuStaticConfig.blog_author' . $prefix); ?>
 							<?php echo $this->BcForm->error('CuStaticConfig.blog_single' . $prefix); ?>
 						</td>
+					</tr>
+					<tr>
+						<td class="col-input bca-form-table__input">
+							<?php
+								echo $this->BcForm->input(
+									'CuStaticConfig.blog_callback' . $prefix,
+									[
+										'type' => 'textarea',
+										'placeholder' => '/index',
+										'rows' => 3,
+									]
+								);
+							?>
+							<p class="info">
+							※ 記事詳細を更新した場合にあわせて更新するページのURLを記載してください。<br>
+							※ 複数指定する場合は改行してください。<br>
+							※ （例：TOPページの新着情報など）<br>
+							</p>
+						</td>
+					</tr>
 					<?php
 							endforeach;
 						endif;
 					?>
-					</tr>
 				</table>
 
 			</td>

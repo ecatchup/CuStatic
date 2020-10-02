@@ -20,7 +20,6 @@
 
 	<?php echo $this->BcFormTable->dispatchAfter() ?>
 
-
 	<section class="bca-actions">
 		<div class="bca-actions__main">
 			<?php

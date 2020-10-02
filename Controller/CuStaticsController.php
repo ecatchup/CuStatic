@@ -47,7 +47,7 @@ class CuStaticsController extends AppController {
 				$this->BcMessage->setError(__d('baser', '入力エラーです。内容を修正してください。'));
 			} else {
 				$this->CuStaticConfig->saveKeyValue($this->request->data);
-				clearDataCache();
+				clearCache();
 				$this->BcMessage->setSuccess(__d('baser', 'オプション設定を保存しました。'));
 				$this->redirect('config');
 			}
@@ -100,9 +100,9 @@ class CuStaticsController extends AppController {
 		$this->autoRender = false;
 
 		$CuStaticConfig = $this->CuStaticConfig->findExpanded();
-		$result['status'] = $CuStaticConfig['status'];
-		$result['progress'] = $CuStaticConfig['progress'];
-		$result['progress_max'] = $CuStaticConfig['progress_max'];
+		$result['status'] = (int) $CuStaticConfig['status'];
+		$result['progress'] = (int) $CuStaticConfig['progress'];
+		$result['progress_max'] = (int) $CuStaticConfig['progress_max'];
 
 		return json_encode($result);
 	}
