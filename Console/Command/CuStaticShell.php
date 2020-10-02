@@ -16,6 +16,7 @@ class CuStaticShell extends Shell {
 		'Blog.BlogCategory',
 		'Blog.BlogTag',
 		'CuStatic.CuStaticConfig',
+		'CuStatic.CuStaticContent',
 	);
 
 	/**
@@ -26,51 +27,118 @@ class CuStaticShell extends Shell {
 	// }
 
 	/**
-	 * 動的コンテンツ出力 CRON同期
+	 * 動的コンテンツ出力 全件対象
 	 */
-	public function main() {
+	public function main($siteId = null) {
 
-		$this->log('[exportHtml] Start ===================================================', LOG_CUSTATIC);
-		$this->exportHtml();
-		$this->log('[exportHtml] End   ===================================================', LOG_CUSTATIC);
+		$this->log('[exportHtml] main Start ===================================================', LOG_CUSTATIC);
+		$options = [];
+		$options['all'] = true;
+		if ($siteId) {
+			$options['siteIds'] = [$siteId];
+		}
+		$this->exportHtml($options);
+		$this->log('[exportHtml] main End   ===================================================', LOG_CUSTATIC);
 
 	}
 
 	/**
-	 *
+	 * 動的コンテンツ出力 差分対象（CRON同期など）
 	 */
-	private function exportHtml() {
+	public function diff($siteId = null) {
+
+		// Page
+		// BlogPost & BlogContent
+		// BlogContent (Category & Tag)
+
+		$this->log('[exportHtml] diff Start ===================================================', LOG_CUSTATIC);
+		$options = [];
+		$options['all'] = false;
+		if ($siteId) {
+			$options['siteIds'] = [$siteId];
+		}
+		$this->exportHtml($options);
+		$this->log('[exportHtml] diff End   ===================================================', LOG_CUSTATIC);
+
+	}
+
+	/**
+	 * HTML出力メイン処理
+	 */
+	private function exportHtml($options = []) {
 
 		$siteConfig = Configure::read('BcSite');
 		$CuStaticConfig = $this->CuStaticConfig->findExpanded();
 
+		// 既に実行中の場合は強制終了
 		if (isset($CuStaticConfig['status']) && $CuStaticConfig['status']) {
 			$this->log('[exportHtml] Currently being processed. Suspend.', LOG_CUSTATIC);
 			return;
 		}
 
+		$options = array_merge([
+			'all' => true,
+			'siteIds' => null,
+		], $options);
+		$this->log('[exportHtml] $options', LOG_CUSTATIC);
+		$this->log($options, LOG_CUSTATIC);
+
+		// 有効化しているプラグイン一覧
+		// $enablePlugins = getEnablePlugins();
+		// $enablePlugins = Hash::extract($enablePlugins, '{n}.Plugin.name');
+		$enablePlugins = Configure::read('CuStatic.plugins');
+
+		// 対象コンテンツの種類
+		$enableTypes = Configure::read('CuStatic.types');
+
 		// Progressbar Max計算: Page * 1 + Folder * 1 + Blog * 6 + (css,js,img,files) * 2
 		$progress = 0;
 		$progressMax = 0;
-		$siteIds = $this->Site->find('list', [
-			'fields' => [
-				'id',
-			],
-			'conditions' => [
-				'status' => true,
-			],
-			'recursive' => -1,
-		]);
-		$siteIds[] = 0; // メインサイトのIDを追加
-		$contents = $this->Content->find('list', [
-			'fields' => ['id', 'type'],
-			'conditions' => [
-				'site_id' => $siteIds,
-				'self_status' => true,
-				'type' => ['Page', 'ContentFolder', 'BlogContent'],
-			],
-			'recursive' => -1,
-		]);
+		if (empty($options['siteIds'])) {
+			// すべてのサイトが対象
+			$siteIds = $this->Site->find('list', [
+				'fields' => [
+					'id',
+				],
+				'conditions' => [
+					'status' => true,
+				],
+				'recursive' => -1,
+			]);
+			$siteIds[] = 0; // メインサイトのIDを追加
+		} else {
+			// 指定したサイトIDのみ対象
+			$siteIds = $options['siteIds'];
+		}
+
+		if ($options['all']) {
+			// 全ページ対象
+			$contents = $this->Content->find('list', [
+				'fields' => [
+					'id',
+					'type',
+				],
+				'conditions' => [
+					'site_id' => $siteIds,
+					'self_status' => true,
+					'type' => $enableTypes,
+				],
+				'recursive' => -1,
+			]);
+		} else {
+			// 差分でのページを対象
+			$contents = $this->CuStaticContent->find('list', [
+				'fields' => [
+					'id',
+					'type',
+				],
+				'conditions' => [
+					'site_id' => $siteIds,
+				],
+				'recursive' => -1,
+			]);
+		}
+
 		foreach($contents as $content) {
 			if ($content == 'BlogContent') {
 				$progressMax = $progressMax + 6;
@@ -91,8 +159,11 @@ class CuStaticShell extends Shell {
 		}
 
 		$exportFolder = new Folder($exportPath);
-		if (file_exists($exportPath)) {
-			$exportFolder->delete();
+		if ($options['all']) {
+			// 全件対象の時は書き出し先のフォルダを一旦初期化
+			if (file_exists($exportPath)) {
+				$exportFolder->delete();
+			}
 		}
 		$exportFolder->create($exportPath, 0777);
 
@@ -115,11 +186,6 @@ class CuStaticShell extends Shell {
 		// ===================================================
 		// Plugin内webrootファイル対応
 		// ===================================================
-
-		// 有効化しているプラグイン一覧
-		// $enablePlugins = getEnablePlugins();
-		// $enablePlugins = Hash::extract($enablePlugins, '{n}.Plugin.name');
-		$enablePlugins = Configure::read('CuStatic.plugins');
 
 		// インストールされているプラグインフォルダ
 		$pluginFolders = [
@@ -188,45 +254,56 @@ class CuStaticShell extends Shell {
 		// ===================================================
 		// コンテンツ管理テーブル
 		// ===================================================
-
-		// メインサイト、サブサイトの順に書き出し
-		$siteIds = $this->Site->find('list', [
-			'fields' => [
-				'id',
-			],
-			'conditions' => [
-				'status' => true,
-			],
-			'recursive' => -1,
-		]);
-
-		// コンテンツテーブルをチェック
-		array_unshift($siteIds, 0);
 		foreach($siteIds as $siteId) {
-			$contents = $this->Content->find('all', [
-				'conditions' => [
-					'site_id' => $siteId,
-					'status' => true,
-					'type' => ['Page', 'ContentFolder', 'BlogContent'],
-				],
-				'order' => [
-					'site_id' => 'ASC',
-					'type' => 'ASC',
-					'lft' => 'ASC',
-					'rght' => 'ASC',
-				],
-				'recursive' => -1,
-			]);
+
+			if ($options['all']) {
+				// 全ページ対象
+				$conditions = $this->Content->getConditionAllowPublish();
+				$conditions['site_id'] = $siteId;
+				$conditions['type'] = $enableTypes;
+				$contents = $this->Content->find('all', [
+					'conditions' => $conditions,
+					'order' => [
+						'site_id' => 'ASC',
+						'type' => 'ASC',
+						'lft' => 'ASC',
+						'rght' => 'ASC',
+					],
+					'recursive' => -1,
+				]);
+			} else {
+				// 差分でのページを対象
+				$contents = $this->CuStaticContent->find('all', [
+					'conditions' => [
+						'site_id' => $siteId,
+					],
+					'order' => [
+						'site_id' => 'ASC',
+						'type' => 'ASC',
+						'id' => 'ASC',
+					],
+					'recursive' => -1,
+				]);
+			}
+
 			foreach ($contents as $content) {
-				$pageUrl = ltrim($content['Content']['url'], '/');
+				if (isset($content['Content'])) {
+					$content = $content['Content'];
+					$status = true;
+				} elseif (isset($content['CuStaticContent'])) {
+					$content = $content['CuStaticContent'];
+					$status = $content['status'];
+				}
+
+				$pageUrl = ltrim($content['url'], '/');
 				$pagePath = str_replace('/', DS, $pageUrl);
 
-				switch ($content['Content']['type']):
+				switch ($content['type']):
 					case 'ContentFolder':
 
 						$url = $baseUrl . '/' . $pageUrl;
 						$path = $exportPath . $pagePath ;
-						$this->makeHtml($url, $path . 'index.html');
+						$this->makeHtml($url, $path . 'index.html', $status);
 						$this->setProgressBar(++$progress, $progressMax);
 						break;
 
@@ -235,7 +312,7 @@ class CuStaticShell extends Shell {
 						if ($CuStaticConfig['page']) {
 							$url = $baseUrl . '/' . $pageUrl;
 							$path = $exportPath . $pagePath;
-							$this->makeHtml($url, $path . '.html');
+							$this->makeHtml($url, $path . '.html', $status);
 						}
 						$this->setProgressBar(++$progress, $progressMax);
 						break;
@@ -244,7 +321,7 @@ class CuStaticShell extends Shell {
 
 						$blogContent = $this->BlogContent->find('first', [
 							'conditions' => [
-								'BlogContent.id' => $content['Content']['entity_id']
+								'BlogContent.id' => $content['entity_id']
 							],
 							'recursive' => -1
 						]);
@@ -253,10 +330,10 @@ class CuStaticShell extends Shell {
 
 						$blogPosts = $this->BlogPost->find('all', [
 							'conditions' => [
-								'BlogPost.blog_content_id' => $content['Content']['entity_id'],
+								'BlogPost.blog_content_id' => $content['entity_id'],
 								$conditionAllowPublish,
 							],
- 						]);
+						 ]);
 
 						// index
 						if ($CuStaticConfig['blog_index']) {
@@ -268,13 +345,13 @@ class CuStaticShell extends Shell {
 							$dir = new Folder($exportPath . $pagePath, 0777);
 							$dir->delete();
 
-							$this->makeHtml($url, $path . '.html');
+							$this->makeHtml($url, $path . '.html', $status);
 
 							$blogPostsCount = count($blogPosts);
 							$this->makePagingHtml($blogPostsCount, $listCount, $url, $path);
 
 							// rss対応
-							$this->makeHtml($url . '.rss', $path . '.rss');
+							$this->makeHtml($url . '.rss', $path . '.rss', $status);
 
 						}
 						$this->setProgressBar(++$progress, $progressMax);
@@ -285,7 +362,7 @@ class CuStaticShell extends Shell {
 							$this->BlogCategory->hasMany['BlogPost']['conditions'] = $conditionAllowPublish;
 							$blogCategories = $this->BlogCategory->find('all', [
 								'conditions' => [
-									'BlogCategory.blog_content_id' => $content['Content']['entity_id'],
+									'BlogCategory.blog_content_id' => $content['entity_id'],
 								],
 								'recursive' => -1,
 							]);
@@ -294,10 +371,10 @@ class CuStaticShell extends Shell {
 								$targetPath = str_replace('/', DS, $targetUrl);
 								$url = $baseUrl . '/' . $pageUrl . $targetUrl;
 								$path = $exportPath . $pagePath . $targetPath;
-								$this->makeHtml($url, $path . '.html');
+								$this->makeHtml($url, $path . '.html', $status);
 
 								// category paging
-								$blogPostsCount = count(Hash::extract($blogPosts, '{n}.BlogPost[blog_content_id=' . $content['Content']['entity_id'] . '][blog_category_id=' . $blogCategory['BlogCategory']['id'] . ']'));
+								$blogPostsCount = count(Hash::extract($blogPosts, '{n}.BlogPost[blog_content_id=' . $content['entity_id'] . '][blog_category_id=' . $blogCategory['BlogCategory']['id'] . ']'));
 								$this->makePagingHtml($blogPostsCount, $listCount, $url, $path);
 							}
 						}
@@ -318,10 +395,10 @@ class CuStaticShell extends Shell {
 									$targetPath = str_replace('/', DS, $targetUrl);
 									$url = $baseUrl . '/' . $pageUrl . $targetUrl;
 									$path = $exportPath . $pagePath . $targetPath;
-									$this->makeHtml($url, $path . '.html');
+									$this->makeHtml($url, $path . '.html', $status);
 
 									// tags paging
-									$blogPostsCount = count(Hash::extract($blogTag['BlogPost'], '{n}[blog_content_id=' . $content['Content']['entity_id'] . ']'));
+									$blogPostsCount = count(Hash::extract($blogTag['BlogPost'], '{n}[blog_content_id=' . $content['entity_id'] . ']'));
 									$this->makePagingHtml($blogPostsCount, $listCount, $url, $path);
 								}
 							}
@@ -349,7 +426,7 @@ class CuStaticShell extends Shell {
 									$targetPath = str_replace('/', DS, $targetUrl);
 									$url = $baseUrl . '/' . $pageUrl . $targetUrl;
 									$path = $exportPath . $pagePath . $targetPath;
-									$this->makeHtml($url, $path . '.html');
+									$this->makeHtml($url, $path . '.html', $status);
 
 									// date paging
 									$this->makePagingHtml($blogPostsCount, $listCount, $url, $path);
@@ -366,20 +443,20 @@ class CuStaticShell extends Shell {
 								$targetPath = str_replace('/', DS, $targetUrl);
 								$url = $baseUrl . '/' . $pageUrl . $targetUrl;
 								$path = $exportPath . $pagePath . $targetPath;
-								$this->makeHtml($url, $path . '.html');
+								$this->makeHtml($url, $path . '.html', $status);
 
 								// author paging
-								$blogPostsCount = count(Hash::extract($blogPosts, '{n}.BlogPost[blog_content_id=' . $content['Content']['entity_id'] . '][user_id=' . $user['User']['id'] . ']'));
+								$blogPostsCount = count(Hash::extract($blogPosts, '{n}.BlogPost[blog_content_id=' . $content['entity_id'] . '][user_id=' . $user['User']['id'] . ']'));
 								$this->makePagingHtml($blogPostsCount, $listCount, $url, $path);
 							}
 						}
 						$this->setProgressBar(++$progress, $progressMax);
 
 						// single
-						if ($CuStaticConfig['blog_single']) {
+						if ($options['all'] && $CuStaticConfig['blog_single']) {
 							$blogPosts = $this->BlogPost->find('all', [
 								'conditions' => [
-									'BlogPost.blog_content_id' => $content['Content']['entity_id'],
+									'BlogPost.blog_content_id' => $content['entity_id'],
 									$conditionAllowPublish,
 								],
 							]);
@@ -388,10 +465,27 @@ class CuStaticShell extends Shell {
 								$targetPath = str_replace('/', DS, $targetUrl);
 								$url = $baseUrl . '/' . $pageUrl . $targetUrl;
 								$path = $exportPath . $pagePath . $targetPath;
-								$this->makeHtml($url, $path . '.html');
+								$this->makeHtml($url, $path . '.html', $status);
 							}
 						}
 						$this->setProgressBar(++$progress, $progressMax);
+
+						break;
+
+					case 'BlogPost':
+						if ($CuStaticConfig['blog_single']) {
+							$blogPost = $this->BlogPost->find('first', [
+								'conditions' => [
+									'BlogPost.blog_content_id' => $content['content_id'],
+									'BlogPost.id' => $content['entity_id'],
+								],
+							]);
+							$targetUrl = 'archives/' . $blogPost['BlogPost']['no'];
+							$targetPath = str_replace('/', DS, $targetUrl);
+							$url = $baseUrl . '/' . $pageUrl . $targetUrl;
+							$path = $exportPath . $pagePath . $targetPath;
+							$this->makeHtml($url, $path . '.html', $status);
+						}
 						break;
 
 					default:
@@ -399,6 +493,10 @@ class CuStaticShell extends Shell {
 
 				endswitch;
 
+			}
+
+			if (!$options['all']) {
+				// TODO: CuStaticContent のデータを整理
 			}
 
 			$this->setProgressBarStatus(0);
@@ -409,11 +507,19 @@ class CuStaticShell extends Shell {
 	private function makePagingHtml($blogPostsCount, $listCount, $targetUrl, $targetPath) {
 
 		if ($blogPostsCount > $listCount) {
+
+			// 一旦フォルダを削除して再作成
+			$folder = new Folder($targetPath);
+			if (file_exists($targetPath)) {
+				$folder->delete();
+			}
+			$folder->create($targetPath, 0777);
+
 			$pageMax = ceil($blogPostsCount / $listCount);
 			for ($i = 2; $i <= $pageMax; $i++) {
 				$url = $targetUrl . '/page:' . $i;
 				$path = $targetPath . DS . $i . '.html';
-				$this->makeHtml($url, $path);
+				$this->makeHtml($url, $path, true);
 			}
 		}
 
@@ -422,10 +528,24 @@ class CuStaticShell extends Shell {
 	/**
 	 * ファイル書き出し
 	 */
-	private function makeHtml($url, $path)  {
+	private function makeHtml($url, $path, $create)  {
+		if ($create) {
+			$this->saveHtml($url, $path);
+		} else {
+			$this->deleteHtml($url, $path);
+		}
+	}
 
-		$this->log('url: ' . $url, LOG_CUSTATIC);
-		$this->log('path: ' . $path, LOG_CUSTATIC);
+	/**
+	 * saveHtml
+	 *
+	 * @param type $url
+	 * @param type $path
+	 */
+	private function saveHtml($url, $path) {
+
+		$this->log('[saveHtml] url: ' . $url, LOG_CUSTATIC);
+		$this->log('[saveHtml] path: ' . $path, LOG_CUSTATIC);
 
 		// $getData = file_get_contents($url);
 
@@ -438,7 +558,7 @@ class CuStaticShell extends Shell {
 		curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);	//
 		$getData = curl_exec($ch);
 		if(curl_exec($ch) === false) {
-			$this->log('[makeHtml] Curl error: ' . curl_error($ch), LOG_CUSTATIC);
+			$this->log('[saveHtml] Curl error: ' . curl_error($ch), LOG_CUSTATIC);
 		}
 		curl_close($ch);
 
@@ -453,6 +573,22 @@ class CuStaticShell extends Shell {
 		file_put_contents($path, $getData);
 		chmod($path, 0664);
 
+	}
+
+	/**
+	 * deleteHtml
+	 *
+	 * @param type $url
+	 * @param type $path
+	 */
+	private function deleteHtml($url, $path) {
+
+		// HTML削除
+		$file = new File($path);
+		$file->delete();
+
+		$this->log('[deleteHtml] url: ' . $url, LOG_CUSTATIC);
+		$this->log('[deleteHtml] path: ' . $path, LOG_CUSTATIC);
 	}
 
 	/**

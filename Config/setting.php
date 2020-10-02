@@ -12,6 +12,7 @@ CakeLog::config(
 		'file' => 'cu_static',
 	]
 );
+App::uses('CuStaticUtil', 'CuStatic.Lib');
 
 $config['CuStatic'] = [
 	'exportPath' => TMP . 'static' . DS,
