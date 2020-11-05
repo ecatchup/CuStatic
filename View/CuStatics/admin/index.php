@@ -121,12 +121,33 @@ $(function(){
 	font-size: 12px;
 	font-family: consolas;
 }
+progress {
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	appearance: none;
+	border: none;
+	background-color: #eeeeee;
+	color: #6fa83d;
+}
+progress::-webkit-progress-value {
+	background-color: #6fa83d;
+}
+progress::-webkit-progress-bar {
+	background-color: #eeeeee;
+}
+progress::-moz-progress-value {
+	background-color: #eeeeee;
+}
+progress::-moz-progress-bar {
+	background-color: #6fa83d;
+}
+
 #status {
 	display: none;
 }
 #status_progres {
 	width: 100%;
-	height: 40px;
+	height: 20px;
 }
 #status_message {
 	margin: 0 auto;
