@@ -25,7 +25,7 @@
 		<div class="bca-actions__main">
 			<?php
 				echo $this->BcForm->submit(
-					__d('baser', 'HTML書出'),
+					__d('baser', '静的HTML出力'),
 					[
 						'id' => 'BtnSave',
 						'div' => false,
@@ -37,17 +37,6 @@
 				);
 			?>
 		</div>
-		<!-- div class="bca-actions__sub">
-			<?php
-				echo $this->BcForm->input(
-					'reset',
-					[
-						'type' => 'checkbox',
-						'label' => '強制的に再実行する',
-					]
-				);
-			?>
-		</div -->
 	</section>
 
 	<div class="bca-collapse__action">
