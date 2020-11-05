@@ -1,10 +1,11 @@
+<?php if (empty($cuStaticConfigs)): ?>
+	<section class="bca-actions">
+		利用する前に [ <?php echo $this->BcBaser->link('オプション設定', ['action' => 'config']) ?> ] を行ってください。
+	</section>
+<?php else: ?>
 
 <section class="bca-section" data-bca-section-type='form-group'>
 
-<?php if (empty($cuStaticConfigs['exportPath'])): ?>
-		利用する前に [ <?php echo $this->BcBaser->link('オプション設定', ['action' => 'config']) ?> ] を行ってください。
-
-<?php else: ?>
 	<?php echo $this->BcForm->create('CuStatic', ['type' => 'file']) ?>
 
 	<?php echo $this->BcFormTable->dispatchBefore() ?>
@@ -60,8 +61,6 @@
 	</div>
 
 	<?php echo $this->BcForm->end() ?>
-
-<?php endif; ?>
 
 </section>
 
@@ -145,3 +144,5 @@ $(function(){
 	text-align: center;
 }
 </style>
+
+<?php endif; ?>
