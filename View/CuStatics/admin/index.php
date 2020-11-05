@@ -46,7 +46,7 @@
 	</div>
 	<div id="console_wrapper" class="bca-collapse" data-bca-state="">
 		<pre id="console"></pre>
-		<?php echo $this->BcBaser->link('ログファイルをダウンロード', ['action' => 'log_download']) ?>
+		<?php echo $this->BcBaser->link('ログファイルをダウンロード', ['action' => 'log_download'], ['class' => 'bca-btn']) ?>
 	</div>
 
 	<?php echo $this->BcForm->end() ?>
