@@ -4,6 +4,13 @@
 	</section>
 <?php else: ?>
 
+<section class="bca-section" data-bca-section-type='form-info'>
+	<p class="bca-main__text">
+		CuStatic プラグインは、指定したフォルダにHTMLを出力することができます。<br>
+		出力先のフォルダや、出力対象については <?php echo $this->BcBaser->link('オプション設定', ['action' => 'config']) ?> にて事前に設定を行ってください。<br>
+	</p>
+</section>
+
 <section class="bca-section" data-bca-section-type='form-group'>
 
 	<?php echo $this->BcForm->create('CuStatic', ['type' => 'file']) ?>
@@ -152,6 +159,9 @@ progress::-moz-progress-bar {
 #status_message {
 	margin: 0 auto;
 	text-align: center;
+}
+.bca-section[data-bca-section-type="form-info"] {
+	margin-bottom: 50px;
 }
 </style>
 
