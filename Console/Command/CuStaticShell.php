@@ -57,6 +57,12 @@ class CuStaticShell extends Shell {
 	 */
 	private function exportHtml($options = []) {
 
+		// requestAction時に ViewでのURL生成を正しくする為、下記を明示的に設定
+		Configure::write('App.baseUrl', '/');
+		Configure::write('App.dir', '');
+		Configure::write('App.webroot', '');
+
+		// 各種設定を読込
 		$siteConfig = Configure::read('BcSite');
 		$CuStaticConfig = $this->CuStaticConfig->findExpanded();
 
@@ -300,7 +306,7 @@ class CuStaticShell extends Shell {
 					case 'ContentFolder':
 						$preifx = '_' . $siteId;
 						if ($CuStaticConfig['folder' . $preifx]) {
-							$url = $baseUrl . '/' . $pageUrl;
+							$url = '/' . $pageUrl;
 							$path = $exportPath . $pagePath ;
 							$this->makeHtml($url, $path . 'index.html', $status);
 						}
@@ -310,7 +316,7 @@ class CuStaticShell extends Shell {
 					case 'Page':
 						$preifx = '_' . $siteId;
 						if ($CuStaticConfig['page' . $preifx]) {
-							$url = $baseUrl . '/' . $pageUrl;
+							$url = '/' . $pageUrl;
 							$path = $exportPath . $pagePath;
 							$this->makeHtml($url, $path . '.html', $status);
 						}
@@ -339,7 +345,7 @@ class CuStaticShell extends Shell {
 						if ($CuStaticConfig['blog_index' . $preifx]) {
 							$targetUrl = 'index';
 							$targetPath = str_replace('/', DS, $targetUrl);
-							$url = $baseUrl . '/' . $pageUrl . $targetUrl;
+							$url = '/' . $pageUrl . $targetUrl;
 							$path = $exportPath . $pagePath . $targetPath;
 
 							$dir = new Folder($exportPath . $pagePath, 0777);
@@ -369,7 +375,7 @@ class CuStaticShell extends Shell {
 							foreach ($blogCategories as $blogCategory) {
 								$targetUrl = 'archives/category/' . $blogCategory['BlogCategory']['name'];
 								$targetPath = str_replace('/', DS, $targetUrl);
-								$url = $baseUrl . '/' . $pageUrl . $targetUrl;
+								$url = '/' . $pageUrl . $targetUrl;
 								$path = $exportPath . $pagePath . $targetPath;
 								$this->makeHtml($url, $path . '.html', $status);
 
@@ -393,7 +399,7 @@ class CuStaticShell extends Shell {
 								foreach ($blogTags as $blogTag) {
 									$targetUrl = 'archives/tag/' . $blogTag['BlogTag']['name'];
 									$targetPath = str_replace('/', DS, $targetUrl);
-									$url = $baseUrl . '/' . $pageUrl . $targetUrl;
+									$url = '/' . $pageUrl . $targetUrl;
 									$path = $exportPath . $pagePath . $targetPath;
 									$this->makeHtml($url, $path . '.html', $status);
 
@@ -424,7 +430,7 @@ class CuStaticShell extends Shell {
 								foreach ($dateCount as $date => $blogPostsCount) {
 									$targetUrl = 'archives/date/' . $date;
 									$targetPath = str_replace('/', DS, $targetUrl);
-									$url = $baseUrl . '/' . $pageUrl . $targetUrl;
+									$url = '/' . $pageUrl . $targetUrl;
 									$path = $exportPath . $pagePath . $targetPath;
 									$this->makeHtml($url, $path . '.html', $status);
 
@@ -441,7 +447,7 @@ class CuStaticShell extends Shell {
 							foreach ($users as $user) {
 								$targetUrl = 'archives/author/' . $user['User']['name'];
 								$targetPath = str_replace('/', DS, $targetUrl);
-								$url = $baseUrl . '/' . $pageUrl . $targetUrl;
+								$url = '/' . $pageUrl . $targetUrl;
 								$path = $exportPath . $pagePath . $targetPath;
 								$this->makeHtml($url, $path . '.html', $status);
 
@@ -463,7 +469,7 @@ class CuStaticShell extends Shell {
 							foreach ($blogPosts as $blogPost) {
 								$targetUrl = 'archives/' . $blogPost['BlogPost']['no'];
 								$targetPath = str_replace('/', DS, $targetUrl);
-								$url = $baseUrl . '/' . $pageUrl . $targetUrl;
+								$url = '/' . $pageUrl . $targetUrl;
 								$path = $exportPath . $pagePath . $targetPath;
 								$this->makeHtml($url, $path . '.html', $status);
 							}
@@ -484,7 +490,7 @@ class CuStaticShell extends Shell {
 							$status = $this->BlogPost->allowPublish($blogPost);
 							$targetUrl = '';
 							$targetPath = str_replace('/', DS, $targetUrl);
-							$url = $baseUrl . '/' . $pageUrl . $targetUrl;
+							$url = '/' . $pageUrl . $targetUrl;
 							$path = $exportPath . $pagePath . $targetPath;
 							$this->makeHtml($url, $path . '.html', $status);
 						}
@@ -600,20 +606,15 @@ class CuStaticShell extends Shell {
 		$this->log('[saveHtml] url: ' . $url, LOG_CUSTATIC);
 		$this->log('[saveHtml] path: ' . $path, LOG_CUSTATIC);
 
-		// $getData = file_get_contents($url);
+		App::uses('CakeObject', 'Core');
+		$CakeObject = new CakeObject();
+		try {
+			$getData = $CakeObject->requestAction($url, ['return' => true, 'bare' => false]);
 
-		$ch = curl_init();
-		curl_setopt($ch, CURLOPT_URL, $url);
-		curl_setopt($ch, CURLOPT_HEADER, 0);
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-		// curl_setopt($ch, CURLOPT_USERPWD, "id:pass");	// basic認証対策
-		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);	// 自己証明書対策
-		curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);	//
-		$getData = curl_exec($ch);
-		if(curl_exec($ch) === false) {
-			$this->log('[saveHtml] Curl error: ' . curl_error($ch), LOG_CUSTATIC);
+		} catch (Exception $e) {
+			$this->log('[saveHtml] RequestAction error: ' . $url, LOG_CUSTATIC);
+			return;
 		}
-		curl_close($ch);
 
 		// html内のURL書き換え処理
 		$getData = $this->convertHtmlLink($getData);
