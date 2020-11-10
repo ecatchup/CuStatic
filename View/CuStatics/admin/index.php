@@ -46,12 +46,9 @@
 		</div>
 	</section>
 
-	<div class="bca-collapse__action">
-		<button type="button" class="bca-collapse__btn" data-bca-collapse="collapse" data-bca-target="#console_wrapper" aria-expanded="false" aria-controls="console_wrapper">
-			最新ログ表示 <i class="bca-icon--desc bca-collapse__btn-icon"></i>
-		</button>
-	</div>
-	<div id="console_wrapper" class="bca-collapse" data-bca-state="">
+	<h2>最新ログ表示</h2>
+
+	<div id="console_wrapper">
 		<pre id="console"></pre>
 		<?php echo $this->BcBaser->link('ログファイルをダウンロード', ['action' => 'log_download'], ['class' => 'bca-btn']) ?>
 	</div>
@@ -122,11 +119,13 @@ $(function(){
 <style>
 #console {
 	width: 100%;
-	height: 400px;
-	overflow: auto;
+	height: 450px;
+	overflow-y: hidden;
 	border: 1px solid #999999;
 	font-size: 12px;
 	font-family: consolas;
+	color: white;
+	background-color: black;
 }
 progress {
 	-webkit-appearance: none;
