@@ -135,7 +135,7 @@ class CuStaticsController extends AppController {
 
 		$fileName = 'cu_static.log';
 		$fullName = TMP . DS . 'logs' . DS . $fileName;
-		$File = new File($fullName);
+		$File = new File($fullName, true);
 		$info = $File->info();
 		$mimeType = $info['mime'];
 		if (empty($mimeType)) {
