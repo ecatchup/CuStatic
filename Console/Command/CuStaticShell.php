@@ -40,7 +40,7 @@ class CuStaticShell extends Shell {
 	}
 
 	/**
-	 * 動的コンテンツ出力 差分対象（CRON同期など）
+	 * 動的コンテンツ出力 差分対象（CRON同期などで利用する想定）
 	 */
 	public function diff() {
 
@@ -49,6 +49,20 @@ class CuStaticShell extends Shell {
 		$options['all'] = false;
 		$this->exportHtml($options);
 		$this->log('[exportHtml] diff End   ===================================================', LOG_CUSTATIC);
+
+	}
+
+	/**
+	 *  HTML生成のみの処理
+	 *
+	 * （※ 主に内部で利用）
+	 */
+	public function html() {
+
+		// args[0] $url  : URL
+		// args[1] $path : 書き出しファイル名（フルパス）
+
+		$this->saveHtml(h($this->args[0]), h($this->args[1]));
 
 	}
 
@@ -589,7 +603,13 @@ class CuStaticShell extends Shell {
 	 */
 	private function makeHtml($url, $path, $create)  {
 		if ($create) {
-			$this->saveHtml($url, $path);
+			// $this->saveHtml($url, $path);
+
+			// requestActionにてメモリ消費が多いので別プロセス化する
+			$command = sprintf(Configure::read('CuStatic.command2'), 'html', $url, $path);
+			$cmd = CakePlugin::path('CuStatic') . 'Shell' . DS . $command;
+			exec($cmd);
+
 		} else {
 			$this->deleteHtml($url, $path);
 		}
@@ -615,6 +635,10 @@ class CuStaticShell extends Shell {
 			$this->log('[saveHtml] RequestAction error: ' . $url, LOG_CUSTATIC);
 			return;
 		}
+		unset($CakeObject);
+
+		// http://www.mikame.net/pr/archives/781
+		//echo sprintf( '%8s %8dk : %s', ($getData) ? 'Success' : 'Failed', memory_get_usage() / 1024, $url)."\n";
 
 		// html内のURL書き換え処理
 		$getData = $this->convertHtmlLink($getData);

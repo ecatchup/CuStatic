@@ -18,6 +18,7 @@ $config['CuStatic'] = [
 	'exportPath' => TMP . 'static' . DS,
 	'baseUrl' => '',
 	'command' => 'exec.sh %s > /dev/null 2>&1 &',
+	'command2' => 'exec.sh %s %s %s',
 	'plugins' => [
 		'Blog',
 		'BurgerEditor',
