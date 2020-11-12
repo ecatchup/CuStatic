@@ -114,18 +114,25 @@ class CuStaticsController extends AppController {
 
 		$this->autoRender = false;
 
-		$file = TMP. 'logs' . DS . 'cu_static.log';
+		$fileName = 'cu_static.log';
+		$fullName = TMP . DS . 'logs' . DS . $fileName;
 
-		if (!file_exists($file)) return;
+		if (!file_exists($fullName)) {
+			new File($fullName, true);
+			return;
+		}
 
 		if ($limit == -1) {
-			$lines = file($file);
+			$lines = file($fullName);
 		} else {
 			// $a = 250;
 			// $b = 10;
 			// $c = $a * $b;
-			$x = file_get_contents($file, false, null, filesize($file) - $limit);
+			$x = file_get_contents($fullName, false, null, filesize($fullName) - $limit);
 			$lines = explode("\n", $x);
+		}
+		if (empty($lines) || (isset($lines[0]) && empty($lines[0]))) {
+			$lines[] = '[ここに処理中の詳細ログが表示されます]';
 		}
 
 		return implode('<br>', $lines);
@@ -135,6 +142,7 @@ class CuStaticsController extends AppController {
 
 		$fileName = 'cu_static.log';
 		$fullName = TMP . DS . 'logs' . DS . $fileName;
+
 		$File = new File($fullName, true);
 		$info = $File->info();
 		$mimeType = $info['mime'];
