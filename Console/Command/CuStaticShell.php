@@ -62,6 +62,11 @@ class CuStaticShell extends Shell {
 		// args[0] $url  : URL
 		// args[1] $path : 書き出しファイル名（フルパス）
 
+		// requestAction時に ViewでのURL生成を正しくする為、下記を明示的に設定
+		Configure::write('App.baseUrl', '/');
+		Configure::write('App.dir', '');
+		Configure::write('App.webroot', '');
+
 		$this->saveHtml(h($this->args[0]), h($this->args[1]));
 
 	}
@@ -70,11 +75,6 @@ class CuStaticShell extends Shell {
 	 * HTML出力メイン処理
 	 */
 	private function exportHtml($options = []) {
-
-		// requestAction時に ViewでのURL生成を正しくする為、下記を明示的に設定
-		Configure::write('App.baseUrl', '/');
-		Configure::write('App.dir', '');
-		Configure::write('App.webroot', '');
 
 		// 各種設定を読込
 		$siteConfig = Configure::read('BcSite');
