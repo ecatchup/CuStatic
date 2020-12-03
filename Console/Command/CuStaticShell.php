@@ -588,6 +588,11 @@ class CuStaticShell extends Shell {
 			}
 			$this->setProgressBar(++$progress, $progressMax);
 
+			// プログレスバー後処理
+			if ($progressMax >= $progress) {
+				$this->setProgressBar($progressMax, $progressMax);
+			}
+
 			$this->setProgressBarStatus(0);
 		}
 
