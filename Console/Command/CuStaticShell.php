@@ -434,7 +434,8 @@ class CuStaticShell extends Shell {
 						$dateFormats = [];
 						if ($CuStaticConfig['blog_date_year' . $preifx]) $dateFormats[] = 'Y';
 						if ($CuStaticConfig['blog_date_month' . $preifx]) $dateFormats[] = 'Y/m';
-						if ($CuStaticConfig['blog_date_day' . $preifx]) $dateFormats[] = 'Y/m/d';
+						// if ($CuStaticConfig['blog_date_day' . $preifx]) $dateFormats[] = 'Y/m/d';
+						if ($CuStaticConfig['blog_date_day' . $preifx]) $dateFormats[] = 'Y/m/j';	// カレンダーウィジェットのリンク先が日付前ゼロない為
 						if ($dateFormats) {
 							foreach ($dateFormats as $dateFormat) {
 								$dateCount = array();
