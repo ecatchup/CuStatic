@@ -91,7 +91,7 @@ class CuStaticControllerEventListener extends BcControllerEventListener {
 		$CuStaticConfigModel = ClassRegistry::init('CuStatic.CuStaticConfig');
 		$CuStaticConfig = $CuStaticConfigModel->findExpanded();
 		$prefix = sprintf('_%s_%s', $data['site_id'], $data['content_id']);
-		if (isset($CuStaticConfig['blog_callback' . $prefix])) {
+		if (!empty($CuStaticConfig['blog_callback' . $prefix])) {
 			$blogCallback = preg_replace("/\r\n|\r|\n/", PHP_EOL, $CuStaticConfig['blog_callback' . $prefix]);
 			$urls = explode(PHP_EOL, $blogCallback);
 			$ContentModel = ClassRegistry::init('Content');

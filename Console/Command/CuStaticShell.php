@@ -447,6 +447,7 @@ class CuStaticShell extends Shell {
 										$dateCount[$date] = 1;
 									}
 								}
+								ksort($dateCount);
 								foreach ($dateCount as $date => $blogPostsCount) {
 									$targetUrl = 'archives/date/' . $date;
 									$targetPath = str_replace('/', DS, $targetUrl);
@@ -507,7 +508,11 @@ class CuStaticShell extends Shell {
 									'BlogPost.id' => $content['entity_id'],
 								],
 							]);
-							$status = $this->BlogPost->allowPublish($blogPost);
+							if ($blogPost) {
+								$status = $this->BlogPost->allowPublish($blogPost);
+							} else {
+								$status = false;
+							}
 							$targetUrl = '';
 							$targetPath = str_replace('/', DS, $targetUrl);
 							$url = '/' . $pageUrl . $targetUrl;
