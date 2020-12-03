@@ -138,6 +138,9 @@ class CuStaticsController extends AppController {
 		return implode('<br>', $lines);
 	}
 
+	/**
+	 * [ADMIN] log download
+	 */
 	public function admin_log_download() {
 
 		$fileName = 'cu_static.log';

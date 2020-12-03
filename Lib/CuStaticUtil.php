@@ -63,16 +63,6 @@ class CuStaticUtil {
 				'content_id' => $param['content_id'],
 				'entity_id' => $param['entity_id'],
 			]);
-			// $CuStaticContentModel->updateAll([
-			// 	'status' => false,
-			// 	'publish_begin' => null,
-			// 	'publish_end' => null,
-			// ],[
-			// 	'plugin' => $param['plugin'],
-			// 	'type' => $param['type'],
-			// 	'content_id' => $param['content_id'],
-			// 	'entity_id' => $param['entity_id'],
-			// ]);
 			$data['CuStaticContent'] = $param;
 			$CuStaticContentModel->create($data);
 			if (!$CuStaticContentModel->save($data, array('callbacks' => false))) {
