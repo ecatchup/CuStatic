@@ -31,6 +31,8 @@ class CuStaticShell extends Shell {
 	 */
 	public function main() {
 
+		Configure::write('App.www_root', ROOT . DS);
+
 		$this->log('[exportHtml] main Start ===================================================', LOG_CUSTATIC);
 		$options = [];
 		$options['all'] = true;
@@ -43,6 +45,8 @@ class CuStaticShell extends Shell {
 	 * 動的コンテンツ出力 差分対象（CRON同期などで利用する想定）
 	 */
 	public function diff() {
+
+		Configure::write('App.www_root', ROOT . DS);
 
 		$this->log('[exportHtml] diff Start ===================================================', LOG_CUSTATIC);
 		$options = [];
@@ -66,6 +70,7 @@ class CuStaticShell extends Shell {
 		Configure::write('App.baseUrl', '/');
 		Configure::write('App.dir', '');
 		Configure::write('App.webroot', '');
+		Configure::write('App.www_root', ROOT . DS);
 
 		$this->saveHtml(h($this->args[0]), h($this->args[1]));
 
@@ -83,7 +88,7 @@ class CuStaticShell extends Shell {
 		// 既に実行中の場合は強制終了
 		if (isset($CuStaticConfig['status']) && $CuStaticConfig['status']) {
 			$this->log('[exportHtml] Currently being processed. Suspend.', LOG_CUSTATIC);
-			return;
+			return false;
 		}
 
 		$now = date('Y-m-d H:i:s');
@@ -157,7 +162,7 @@ class CuStaticShell extends Shell {
 				$progressMax = $progressMax + 1;
 			}
 		}
-		$progressMax = $progressMax + 2;
+		$progressMax = $progressMax + 3;
 
 		$this->setProgressBarStatus(1);
 
@@ -569,8 +574,13 @@ class CuStaticShell extends Shell {
 						$this->CuStaticContent->delete($content['id']);
 					}
 				}
-
 			}
+
+			// 書き出し後に実行する処理
+			if (!$this->execOptionsProcess()) {
+				return false;
+			}
+			$this->setProgressBar(++$progress, $progressMax);
 
 			$this->setProgressBarStatus(0);
 		}
@@ -603,12 +613,12 @@ class CuStaticShell extends Shell {
 	 */
 	private function makeHtml($url, $path, $create)  {
 		if ($create) {
-			// $this->saveHtml($url, $path);
+			$this->saveHtml($url, $path);
 
-			// requestActionにてメモリ消費が多いので別プロセス化する
-			$command = sprintf(Configure::read('CuStatic.command2'), 'html', $url, $path);
-			$cmd = CakePlugin::path('CuStatic') . 'Shell' . DS . $command;
-			exec($cmd);
+			// // requestActionにてメモリ消費が多いので別プロセス化する
+			// $command = sprintf(Configure::read('CuStatic.command2'), 'html', $url, $path);
+			// $cmd = CakePlugin::path('CuStatic') . 'Shell' . DS . $command;
+			// exec($cmd);
 
 		} else {
 			$this->deleteHtml($url, $path);
@@ -623,19 +633,44 @@ class CuStaticShell extends Shell {
 	 */
 	private function saveHtml($url, $path) {
 
+		$baseUrl = Configure::read('BcEnv.sslUrl');
+		if (empty($baseUrl)) {
+			$baseUrl = Configure::read('BcEnv.siteUrl');
+		}
+		$url = rtrim($baseUrl, DS) . $url;
+
 		$this->log('[saveHtml] url: ' . $url, LOG_CUSTATIC);
 		$this->log('[saveHtml] path: ' . $path, LOG_CUSTATIC);
 
-		App::uses('CakeObject', 'Core');
-		$CakeObject = new CakeObject();
-		try {
-			$getData = $CakeObject->requestAction($url, ['return' => true, 'bare' => false]);
-
-		} catch (Exception $e) {
-			$this->log('[saveHtml] RequestAction error: ' . $url, LOG_CUSTATIC);
-			return;
+		static $ch;
+    	if (empty($ch)) {
+			$ch = curl_init();
+			curl_setopt($ch, CURLOPT_HEADER, 0);
+			curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+			curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+			// curl_setopt($ch, CURLOPT_USERPWD, "idxxxx:passxxxx");	// Basic認証対応
+			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);	// オレオレ証明書対策
+			curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);	//
 		}
-		unset($CakeObject);
+		curl_setopt($ch, CURLOPT_URL, $url);
+		$getData = curl_exec($ch);
+		if($getData === false) {
+			$this->log('[saveHtml] Curl error: ' . curl_error($ch), LOG_CUSTATIC);
+		}
+
+		// $this->log('[saveHtml] url: ' . $url, LOG_CUSTATIC);
+		// $this->log('[saveHtml] path: ' . $path, LOG_CUSTATIC);
+
+		// App::uses('CakeObject', 'Core');
+		// $CakeObject = new CakeObject();
+		// try {
+		// 	$getData = $CakeObject->requestAction($url, ['return' => true, 'bare' => false]);
+
+		// } catch (Exception $e) {
+		// 	$this->log('[saveHtml] RequestAction error: ' . $url, LOG_CUSTATIC);
+		// 	return;
+		// }
+		// unset($CakeObject);
 
 		// http://www.mikame.net/pr/archives/781
 		//echo sprintf( '%8s %8dk : %s', ($getData) ? 'Success' : 'Failed', memory_get_usage() / 1024, $url)."\n";
@@ -891,4 +926,13 @@ class CuStaticShell extends Shell {
 		$this->CuStaticConfig->saveKeyValue($config);
 	}
 
+	/**
+	 * 書き出し後に実行する処理
+	 */
+	private function execOptionsProcess() {
+
+		// 処理を追加する
+
+		return true;
+	}
 }
