@@ -576,6 +576,21 @@ class CuStaticShell extends Shell {
 					} else {
 						$deleteFlag = false;
 					}
+
+					if ($content['type'] == 'BlogContent') {
+						$count = $this->CuStaticContent->find('count', [
+							'conditions' => [
+								'name' => $content['name'],
+								'plugin' => $content['plugin'],
+								'type' => 'BlogPost',
+								'content_id' => $content['entity_id'],
+							],
+						]);
+						if ($count > 0) {
+							$deleteFlag = false;
+						}
+					}
+
 					if ($deleteFlag) {
 						$this->CuStaticContent->delete($content['id']);
 					}
