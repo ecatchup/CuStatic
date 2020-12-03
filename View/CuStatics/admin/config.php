@@ -154,7 +154,7 @@
 									'CuStaticConfig.blog_date_day' . $prefix,
 									[
 										'type' => 'checkbox',
-										'label' => '年月別一覧',
+										'label' => '年月日別一覧',
 										'default' => true,
 										'class' => 'bca-checkbox__input blog' . $prefix,
 									]
