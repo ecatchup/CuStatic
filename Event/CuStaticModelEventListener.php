@@ -42,7 +42,7 @@ class CuStaticModelEventListener extends BcModelEventListener {
 		$data['type'] = 'BlogPost';
 		$data['content_id'] = $modelData['BlogPost']['blog_content_id'];
 		$data['entity_id'] = $modelData['BlogPost']['id'];
-		$data['url'] .= 'arcives/' . $modelData['BlogPost']['no'];
+		$data['url'] .= 'archives/' . $modelData['BlogPost']['no'];
 		CuStaticUtil::setContentsData($data);
 
 		return true;
@@ -83,7 +83,7 @@ class CuStaticModelEventListener extends BcModelEventListener {
 		$data['type'] = 'BlogPost';
 		$data['content_id'] = $modelData['BlogPost']['blog_content_id'];
 		$data['entity_id'] = $modelData['BlogPost']['id'];
-		$data['url'] .= 'arcives/' . $modelData['BlogPost']['no'];
+		$data['url'] .= 'archives/' . $modelData['BlogPost']['no'];
 		CuStaticUtil::setContentsData($data);
 
 		return true;

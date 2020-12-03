@@ -84,7 +84,7 @@ class CuStaticControllerEventListener extends BcControllerEventListener {
 		$data['type'] = 'BlogPost';
 		$data['content_id'] = $modelData['BlogPost']['blog_content_id'];
 		$data['entity_id'] = $modelData['BlogPost']['id'];
-		$data['url'] .= 'arcives/' . $modelData['BlogPost']['no'];
+		$data['url'] .= 'archives/' . $modelData['BlogPost']['no'];
 		CuStaticUtil::setContentsData($data);
 
 		// 設定画面で指定されている追加のURLの処理
