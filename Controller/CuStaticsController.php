@@ -128,7 +128,7 @@ class CuStaticsController extends AppController {
 			// $a = 250;
 			// $b = 10;
 			// $c = $a * $b;
-			$x = file_get_contents($fullName, false, null, filesize($fullName) - $limit);
+			$x = @file_get_contents($fullName, false, null, filesize($fullName) - $limit);
 			$lines = explode("\n", $x);
 		}
 		if (empty($lines) || (isset($lines[0]) && empty($lines[0]))) {
@@ -138,6 +138,9 @@ class CuStaticsController extends AppController {
 		return implode('<br>', $lines);
 	}
 
+	/**
+	 * [ADMIN] log download
+	 */
 	public function admin_log_download() {
 
 		$fileName = 'cu_static.log';

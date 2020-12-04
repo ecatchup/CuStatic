@@ -31,6 +31,8 @@ class CuStaticShell extends Shell {
 	 */
 	public function main() {
 
+		Configure::write('App.www_root', ROOT . DS);
+
 		$this->log('[exportHtml] main Start ===================================================', LOG_CUSTATIC);
 		$options = [];
 		$options['all'] = true;
@@ -43,6 +45,8 @@ class CuStaticShell extends Shell {
 	 * 動的コンテンツ出力 差分対象（CRON同期などで利用する想定）
 	 */
 	public function diff() {
+
+		Configure::write('App.www_root', ROOT . DS);
 
 		$this->log('[exportHtml] diff Start ===================================================', LOG_CUSTATIC);
 		$options = [];
@@ -66,6 +70,7 @@ class CuStaticShell extends Shell {
 		Configure::write('App.baseUrl', '/');
 		Configure::write('App.dir', '');
 		Configure::write('App.webroot', '');
+		Configure::write('App.www_root', ROOT . DS);
 
 		$this->saveHtml(h($this->args[0]), h($this->args[1]));
 
@@ -83,7 +88,7 @@ class CuStaticShell extends Shell {
 		// 既に実行中の場合は強制終了
 		if (isset($CuStaticConfig['status']) && $CuStaticConfig['status']) {
 			$this->log('[exportHtml] Currently being processed. Suspend.', LOG_CUSTATIC);
-			return;
+			return false;
 		}
 
 		$now = date('Y-m-d H:i:s');
@@ -157,7 +162,7 @@ class CuStaticShell extends Shell {
 				$progressMax = $progressMax + 1;
 			}
 		}
-		$progressMax = $progressMax + 2;
+		$progressMax = $progressMax + 3;
 
 		$this->setProgressBarStatus(1);
 
@@ -429,7 +434,8 @@ class CuStaticShell extends Shell {
 						$dateFormats = [];
 						if ($CuStaticConfig['blog_date_year' . $preifx]) $dateFormats[] = 'Y';
 						if ($CuStaticConfig['blog_date_month' . $preifx]) $dateFormats[] = 'Y/m';
-						if ($CuStaticConfig['blog_date_day' . $preifx]) $dateFormats[] = 'Y/m/d';
+						// if ($CuStaticConfig['blog_date_day' . $preifx]) $dateFormats[] = 'Y/m/d';
+						if ($CuStaticConfig['blog_date_day' . $preifx]) $dateFormats[] = 'Y/m/j';	// カレンダーウィジェットのリンク先が日付前ゼロない為
 						if ($dateFormats) {
 							foreach ($dateFormats as $dateFormat) {
 								$dateCount = array();
@@ -441,6 +447,7 @@ class CuStaticShell extends Shell {
 										$dateCount[$date] = 1;
 									}
 								}
+								ksort($dateCount);
 								foreach ($dateCount as $date => $blogPostsCount) {
 									$targetUrl = 'archives/date/' . $date;
 									$targetPath = str_replace('/', DS, $targetUrl);
@@ -501,7 +508,11 @@ class CuStaticShell extends Shell {
 									'BlogPost.id' => $content['entity_id'],
 								],
 							]);
-							$status = $this->BlogPost->allowPublish($blogPost);
+							if ($blogPost) {
+								$status = $this->BlogPost->allowPublish($blogPost);
+							} else {
+								$status = false;
+							}
 							$targetUrl = '';
 							$targetPath = str_replace('/', DS, $targetUrl);
 							$url = '/' . $pageUrl . $targetUrl;
@@ -565,11 +576,36 @@ class CuStaticShell extends Shell {
 					} else {
 						$deleteFlag = false;
 					}
+
+					if ($content['type'] == 'BlogContent') {
+						$count = $this->CuStaticContent->find('count', [
+							'conditions' => [
+								'name' => $content['name'],
+								'plugin' => $content['plugin'],
+								'type' => 'BlogPost',
+								'content_id' => $content['entity_id'],
+							],
+						]);
+						if ($count > 0) {
+							$deleteFlag = false;
+						}
+					}
+
 					if ($deleteFlag) {
 						$this->CuStaticContent->delete($content['id']);
 					}
 				}
+			}
 
+			// 書き出し後に実行する処理
+			if (!$this->execOptionsProcess()) {
+				return false;
+			}
+			$this->setProgressBar(++$progress, $progressMax);
+
+			// プログレスバー後処理
+			if ($progressMax > $progress) {
+				$this->setProgressBar($progressMax, $progressMax);
 			}
 
 			$this->setProgressBarStatus(0);
@@ -603,12 +639,12 @@ class CuStaticShell extends Shell {
 	 */
 	private function makeHtml($url, $path, $create)  {
 		if ($create) {
-			// $this->saveHtml($url, $path);
+			$this->saveHtml($url, $path);
 
-			// requestActionにてメモリ消費が多いので別プロセス化する
-			$command = sprintf(Configure::read('CuStatic.command2'), 'html', $url, $path);
-			$cmd = CakePlugin::path('CuStatic') . 'Shell' . DS . $command;
-			exec($cmd);
+			// // requestActionにてメモリ消費が多いので別プロセス化する
+			// $command = sprintf(Configure::read('CuStatic.command2'), 'html', $url, $path);
+			// $cmd = CakePlugin::path('CuStatic') . 'Shell' . DS . $command;
+			// exec($cmd);
 
 		} else {
 			$this->deleteHtml($url, $path);
@@ -623,19 +659,44 @@ class CuStaticShell extends Shell {
 	 */
 	private function saveHtml($url, $path) {
 
+		$baseUrl = Configure::read('BcEnv.sslUrl');
+		if (empty($baseUrl)) {
+			$baseUrl = Configure::read('BcEnv.siteUrl');
+		}
+		$url = rtrim($baseUrl, DS) . $url;
+
 		$this->log('[saveHtml] url: ' . $url, LOG_CUSTATIC);
 		$this->log('[saveHtml] path: ' . $path, LOG_CUSTATIC);
 
-		App::uses('CakeObject', 'Core');
-		$CakeObject = new CakeObject();
-		try {
-			$getData = $CakeObject->requestAction($url, ['return' => true, 'bare' => false]);
-
-		} catch (Exception $e) {
-			$this->log('[saveHtml] RequestAction error: ' . $url, LOG_CUSTATIC);
-			return;
+		static $ch;
+    	if (empty($ch)) {
+			$ch = curl_init();
+			curl_setopt($ch, CURLOPT_HEADER, 0);
+			curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+			curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+			// curl_setopt($ch, CURLOPT_USERPWD, "idxxxx:passxxxx");	// Basic認証対応
+			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);	// オレオレ証明書対策
+			curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);	//
 		}
-		unset($CakeObject);
+		curl_setopt($ch, CURLOPT_URL, $url);
+		$getData = curl_exec($ch);
+		if($getData === false) {
+			$this->log('[saveHtml] Curl error: ' . curl_error($ch), LOG_CUSTATIC);
+		}
+
+		// $this->log('[saveHtml] url: ' . $url, LOG_CUSTATIC);
+		// $this->log('[saveHtml] path: ' . $path, LOG_CUSTATIC);
+
+		// App::uses('CakeObject', 'Core');
+		// $CakeObject = new CakeObject();
+		// try {
+		// 	$getData = $CakeObject->requestAction($url, ['return' => true, 'bare' => false]);
+
+		// } catch (Exception $e) {
+		// 	$this->log('[saveHtml] RequestAction error: ' . $url, LOG_CUSTATIC);
+		// 	return;
+		// }
+		// unset($CakeObject);
 
 		// http://www.mikame.net/pr/archives/781
 		//echo sprintf( '%8s %8dk : %s', ($getData) ? 'Success' : 'Failed', memory_get_usage() / 1024, $url)."\n";
@@ -783,96 +844,6 @@ class CuStaticShell extends Shell {
 		return $getData2;
 	}
 
-	/**
-	 * 相対パスから絶対URLを作成する
-	 *
-	 * @param string $path
-	 * @param string $currentPath
-	 * @param string $full
-	 * @return string
-	 * @access public
-	 */
-	private function getUrl($path, $currentPath = '', $full = false) {
-
-		$path = trim($path);
-
-		if (preg_match('/^https?\:\/\//', $path)) {
-			return $path;
-		}
-
-		$base = Configure::read('StaticExporter.BaseUrl');
-		if (empty($base)) {
-			$base = Configure::read('BcEnv.siteUrl');
-		}
-
-		// URLの最後が/でなければ追加
-		if (substr($base, -1) !== '/') {
-			$base .= '/';
-		}
-
-		// 現在ページの処理
-		if ($currentPath) {
-			if (substr($base, 1) === '/') {
-				$base .= substr($currentPath, 1);
-			}
-		}
-
-		$parse = parse_url($base);
-
-		// http://xxxxxx.com:8080/ の部分
-		$out = '';
-		if ($full) {
-			$out = $parse['scheme'] . '://' . $parse['host'];
-			if (isset($parse['port']) && !empty($parse['port'])) {
-				$out .= ':' . $parse['port'];
-			}
-		}
-
-		// baseのURLを分解して組み立てる
-		$work = array();
-		$baseSplit = split('/', $parse['path']);
-		foreach ($baseSplit as $item) {
-			if ($item) {
-				array_push($work, $item);
-			}
-		}
-
-		// 引数のURLを分解して組み立てる
-		$pathSplit = split('/', $path);
-		foreach ($pathSplit as $item) {
-			if (strcmp($item, '') == 0) {
-				continue;
-			} elseif ($item == '.') {
-
-			} elseif ($item == '..') {
-				array_pop($work);
-			} else {
-				array_push($work, $item);
-			}
-		}
-
-		// スマホ対応（smartphone -> sp / s）
-		$smartphone = Configure::read('BcAgent.smartphone');
-		if (isset($work[0]) && $work[0] === $smartphone['prefix']) {
-			$work[0] = $smartphone['alias'];
-		}
-
-		// モバイル対応（mobile -> fp / m）
-		$mobile = Configure::read('BcAgent.mobile');
-		if (isset($work[0]) && $work[0] === $mobile['prefix']) {
-			$work[0] = $mobile['alias'];
-		}
-
-		$out .= '/' . join('/', $work);
-
-		// URLの?以降は削除
-		if (preg_match('/(.*?)\?(.*?)/', $out, $matches)) {
-			$out = $matches[1];
-		}
-
-		return $out;
-	}
-
 	private function setProgressBarStatus($status) {
 		$config = [];
 		$config['status'] = $status;
@@ -891,4 +862,13 @@ class CuStaticShell extends Shell {
 		$this->CuStaticConfig->saveKeyValue($config);
 	}
 
+	/**
+	 * 書き出し後に実行する処理
+	 */
+	private function execOptionsProcess() {
+
+		// 処理を追加する
+
+		return true;
+	}
 }

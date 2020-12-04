@@ -8,6 +8,7 @@ class CuStaticModelEventListener extends BcModelEventListener {
 	 */
 	public $events = array(
 		'Blog.BlogPost.beforeDelete',
+		'Blog.BlogPost.afterSave',
 		'Content.afterSave',
 	);
 
@@ -15,19 +16,76 @@ class CuStaticModelEventListener extends BcModelEventListener {
 	 * ブログ記事：削除
 	 */
 	public function blogBlogPostBeforeDelete(CakeEvent $event) {
+
 		if (!BcUtil::isAdminSystem()) {
 			return;
 		}
+
 		$Model = $event->subject();
 		$modelData = $Model->data;
 		$params = Router::getParams();
-		$modelData['Content'] = $params['Content'];
+		if (empty($params['Content'])) {
+			$ContentModel = ClassRegistry::init('Content');
+			$content = $ContentModel->find('first', [
+				'conditions' => [
+					'type' => 'BlogContent',
+					'entity_id' => $modelData['BlogPost']['blog_content_id'],
+				],
+				'recursive' => -1,
+			]);
+			$modelData['Content'] = $content['Content'];
+		} else {
+			$modelData['Content'] = $params['Content'];
+		}
 		$data = CuStaticUtil::getContentsData($modelData);
+
 		$data['type'] = 'BlogPost';
 		$data['content_id'] = $modelData['BlogPost']['blog_content_id'];
 		$data['entity_id'] = $modelData['BlogPost']['id'];
-		$data['url'] .= 'arcives/' . $modelData['BlogPost']['no'];
+		$data['url'] .= 'archives/' . $modelData['BlogPost']['no'];
 		CuStaticUtil::setContentsData($data);
+
+		return true;
+	}
+
+	/**
+	 * ブログ記事：変更（Controllerのイベントでカバーできない分）
+	 */
+	public function blogBlogPostAfterSave(CakeEvent $event) {
+
+		if (!BcUtil::isAdminSystem()) {
+			return;
+		}
+
+		$targetActions = ['admin_ajax_copy', 'admin_ajax_publish', 'admin_ajax_unpublish', 'admin_ajax_batch'];
+		$params = Router::getParams();
+		if (!in_array($params['action'], $targetActions)) {
+			return;
+		}
+
+		$Model = $event->subject();
+		$modelData = $Model->data;
+		if (empty($params['Content'])) {
+			$ContentModel = ClassRegistry::init('Content');
+			$content = $ContentModel->find('first', [
+				'conditions' => [
+					'type' => 'BlogContent',
+					'entity_id' => $modelData['BlogPost']['blog_content_id'],
+				],
+				'recursive' => -1,
+			]);
+			$modelData['Content'] = $content['Content'];
+		} else {
+			$modelData['Content'] = $params['Content'];
+		}
+		$data = CuStaticUtil::getContentsData($modelData);
+
+		$data['type'] = 'BlogPost';
+		$data['content_id'] = $modelData['BlogPost']['blog_content_id'];
+		$data['entity_id'] = $modelData['BlogPost']['id'];
+		$data['url'] .= 'archives/' . $modelData['BlogPost']['no'];
+		CuStaticUtil::setContentsData($data);
+
 		return true;
 	}
 
