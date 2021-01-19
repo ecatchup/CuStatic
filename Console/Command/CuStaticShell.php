@@ -193,10 +193,7 @@ class CuStaticShell extends Shell {
 		$baseUrl = rtrim($baseUrl, '/');
 		$this->log('baseUrl: ' . $baseUrl, LOG_CUSTATIC);
 
-		$baseDir = WWW_ROOT;
-		if ($baseDir == DS) {
-			$baseDir = ROOT;
-		}
+		$baseDir = ROOT;
 		$baseDir = rtrim($baseDir, DS) . DS;
 
 		// ===================================================
