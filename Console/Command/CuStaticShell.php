@@ -761,7 +761,7 @@ class CuStaticShell extends Shell {
 			$href = trim($e->getAttribute('href'));
 
 			// 外部リンク、アンカー等は書き換えない
-			if (preg_match('/^(https?|ftp|tel:|mailto:|#)/', $href)) {
+			if (preg_match('/^(https?|ftp|tel:|mailto:|#|javascript)/', $href)) {
 				continue;
 			}
 
