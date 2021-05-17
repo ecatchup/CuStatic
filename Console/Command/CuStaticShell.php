@@ -81,6 +81,8 @@ class CuStaticShell extends Shell {
 	 */
 	private function exportHtml($options = []) {
 
+		clearAllCache();
+
 		// 各種設定を読込
 		$siteConfig = Configure::read('BcSite');
 		$CuStaticConfig = $this->CuStaticConfig->findExpanded();
@@ -355,6 +357,7 @@ class CuStaticShell extends Shell {
 								'BlogPost.blog_content_id' => $content['entity_id'],
 								$conditionAllowPublish,
 							],
+							'recursive' => -1,
 						 ]);
 
 						// index
@@ -410,7 +413,7 @@ class CuStaticShell extends Shell {
 								$blogTags = $this->BlogTag->find('all', [
 									'conditions' => [
 									],
-									'recursive' => 2,
+									'recursive' => -1,
 								]);
 								foreach ($blogTags as $blogTag) {
 									$targetUrl = 'archives/tag/' . $blogTag['BlogTag']['name'];
@@ -420,7 +423,28 @@ class CuStaticShell extends Shell {
 									$this->makeHtml($url, $path . '.html', $status);
 
 									// tags paging
-									$blogPostsCount = count(Hash::extract($blogTag['BlogPost'], '{n}[blog_content_id=' . $content['entity_id'] . ']'));
+									$blogPostsCount = $this->BlogPost->find('count', [
+										'conditions' => [
+											'BlogTag.id' => $blogTag['BlogTag']['id'],
+											'BlogPost.blog_content_id' => $content['entity_id']
+										],
+										'joins' => [
+											['table' => 'blog_posts_blog_tags',
+												'alias' => 'BlogPostBlogTag',
+												'type' => 'inner',
+												'conditions' => [
+													'BlogPost.id = BlogPostBlogTag.blog_post_id'
+												]
+											],
+											['table' => 'blog_tags',
+												'alias' => 'BlogTag',
+												'type' => 'inner',
+												'conditions' => [
+													'BlogPostBlogTag.blog_tag_id = BlogTag.id'
+												]
+											]
+										]
+									]);
 									$this->makePagingHtml($blogPostsCount, $listCount, $url, $path);
 								}
 							}
@@ -483,6 +507,7 @@ class CuStaticShell extends Shell {
 									'BlogPost.blog_content_id' => $content['entity_id'],
 									$conditionAllowPublish,
 								],
+								'recursive' => -1,
 							]);
 							foreach ($blogPosts as $blogPost) {
 								$targetUrl = 'archives/' . $blogPost['BlogPost']['no'];
@@ -504,6 +529,7 @@ class CuStaticShell extends Shell {
 									'BlogPost.blog_content_id' => $content['content_id'],
 									'BlogPost.id' => $content['entity_id'],
 								],
+								'recursive' => -1,
 							]);
 							if ($blogPost) {
 								$status = $this->BlogPost->allowPublish($blogPost);
