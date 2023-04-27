@@ -433,9 +433,8 @@ class CuStaticShell extends Shell {
 						// date
 						$dateFormats = [];
 						if ($CuStaticConfig['blog_date_year' . $preifx]) $dateFormats[] = 'Y';
-						if ($CuStaticConfig['blog_date_month' . $preifx]) $dateFormats[] = 'Y/m';
-						// if ($CuStaticConfig['blog_date_day' . $preifx]) $dateFormats[] = 'Y/m/d';
-						if ($CuStaticConfig['blog_date_day' . $preifx]) $dateFormats[] = 'Y/m/j';	// カレンダーウィジェットのリンク先が日付前ゼロない為
+						if ($CuStaticConfig['blog_date_month' . $preifx]) $dateFormats[] = 'Y/n';
+						if ($CuStaticConfig['blog_date_day' . $preifx]) $dateFormats[] = 'Y/n/j';	// カレンダーウィジェットのリンク先が日付前ゼロない為
 						if ($dateFormats) {
 							foreach ($dateFormats as $dateFormat) {
 								$dateCount = array();
@@ -868,6 +867,40 @@ class CuStaticShell extends Shell {
 	private function execOptionsProcess() {
 
 		// 処理を追加する
+
+		// 指定ファイルを移設するサンプル
+		/**
+		$CuStaticConfig = $this->CuStaticConfig->findExpanded();
+		$exportPath = $CuStaticConfig['exportPath'];
+		// 指定ファイル書き出し
+		$copyFiles = [
+			'apple-touch-icon-precomposed.png' => 'apple-touch-icon-precomposed.png',
+			'favicon.ico' => 'favicon.ico',
+			'.htaccess.www' => '.htaccess',
+			'theme/your-theme/favicon.ico' => 'theme/your-theme/favicon.ico',
+            'static.html' => 'static.html',
+		];
+		foreach($copyFiles as $before => $after) {
+			$this->log('[execOptionsProcess] copy: ' . ROOT . DS . $before . ' => ' . $exportPath . $after, LOG_CUSTATIC);
+			copy(ROOT . DS . $before, $exportPath . $after);
+		}
+
+		// 指定ディレクトリ書き出し
+		$copyDirectories = [
+			'example_dir' => 'example_dir',
+			'assets' => 'assets',
+		];
+		foreach($copyDirectories as $before => $after) {
+			$this->log('[execOptionsProcess] copy-direcotory: ' . ROOT . DS . $before . ' => ' . $exportPath . $after, LOG_CUSTATIC);
+			system('cp -r ' . ROOT . DS . $before . ' ' . $exportPath . $after);
+		}
+		 */
+
+		// 書き出し完了後にファイルを生成するサンプル
+		/**
+		// 同期実行ファイルを設置する
+		touch("/PATH/TO/custatic-output-endfile");
+		*/
 
 		return true;
 	}
