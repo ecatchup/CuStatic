@@ -27,7 +27,12 @@ class CuStaticsController extends AppController {
 			$command = sprintf(Configure::read('CuStatic.command'), 'main');
 			$cmd = CakePlugin::path('CuStatic') . 'Shell' . DS . $command;
 			$this->log($cmd, LOG_CUSTATIC);
-			exec($cmd);
+			exec($cmd, $output, $resultCode);
+			if ($output || $resultCode) {
+				$this->log($cmd);
+				$this->log($output);
+				$this->log($resultCode);
+			}
 			$this->redirect('index');
 		}
 
