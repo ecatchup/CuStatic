@@ -47,6 +47,7 @@ class CuStaticsController extends AppController {
 				$this->BcMessage->setError(__d('baser', '入力エラーです。内容を修正してください。'));
 			} else {
 				$this->CuStaticConfig->saveKeyValue($this->request->data);
+				$this->CuStaticConfig->setDefaultStatus();
 				clearCache();
 				$this->BcMessage->setSuccess(__d('baser', 'オプション設定を保存しました。'));
 				$this->redirect('config');
@@ -128,7 +129,7 @@ class CuStaticsController extends AppController {
 			// $a = 250;
 			// $b = 10;
 			// $c = $a * $b;
-			$x = @file_get_contents($fullName, false, null, filesize($fullName) - $limit);
+			$x = file_get_contents($fullName, false, null, filesize($fullName) - $limit);
 			$lines = explode("\n", $x);
 		}
 		if (empty($lines) || (isset($lines[0]) && empty($lines[0]))) {
