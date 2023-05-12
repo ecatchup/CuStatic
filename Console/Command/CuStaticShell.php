@@ -811,8 +811,15 @@ class CuStaticShell extends Shell {
 			// URLを分解する
 			$pathInfo = pathinfo($href);
 
-			// 拡張子がある場合は書き換えない
+			// 拡張子がある場合
+			// -> BurgerEditorの場合は直接リンクに書き換える
 			if (array_key_exists('extension', $pathInfo)) {
+				$burgerDlPath = '/burger_editor/burger_editor/dl/';
+				$burgerReplacePath = '/files/bgeditor/other/';
+				if (strpos($href, $burgerDlPath) !== false) {
+					$href = str_replace($burgerDlPath, $burgerReplacePath, $href);
+					$e->setAttribute('href', $href);
+				}
 				continue;
 			}
 
