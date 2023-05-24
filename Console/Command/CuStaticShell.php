@@ -317,7 +317,7 @@ class CuStaticShell extends Shell {
 					}
 				}
 
-				$pageUrl = ltrim(urldecode($content['url']), '/');
+				$pageUrl = ltrim($content['url'], '/');
 				$pagePath = str_replace('/', DS, $pageUrl);
 
 				switch ($content['type']):
@@ -680,6 +680,8 @@ class CuStaticShell extends Shell {
 	 * @param type $path
 	 */
 	private function saveHtml($url, $path) {
+		// 生成ファイルはデコード
+		$path = urldecode($path);
 
 		$baseUrl = Configure::read('BcEnv.sslUrl');
 		if (empty($baseUrl)) {
