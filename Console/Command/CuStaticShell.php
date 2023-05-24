@@ -317,7 +317,7 @@ class CuStaticShell extends Shell {
 					}
 				}
 
-				$pageUrl = ltrim($content['url'], '/');
+				$pageUrl = ltrim(urldecode($content['url']), '/');
 				$pagePath = str_replace('/', DS, $pageUrl);
 
 				switch ($content['type']):
