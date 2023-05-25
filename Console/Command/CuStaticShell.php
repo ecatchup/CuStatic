@@ -680,6 +680,8 @@ class CuStaticShell extends Shell {
 	 * @param type $path
 	 */
 	private function saveHtml($url, $path) {
+		// 生成ファイルはデコード
+		$path = urldecode($path);
 
 		$baseUrl = Configure::read('BcEnv.sslUrl');
 		if (empty($baseUrl)) {
