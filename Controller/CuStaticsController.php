@@ -33,7 +33,7 @@ class CuStaticsController extends AppController {
 				$this->log($output);
 				$this->log($resultCode);
 			}
-			$this->redirect('index');
+			$this->redirect(['action' => 'index']);
 		}
 
 		$this->set('cuStaticConfigs', $this->CuStaticConfig->findExpanded());
@@ -55,7 +55,7 @@ class CuStaticsController extends AppController {
 				$this->CuStaticConfig->setDefaultStatus();
 				clearCache();
 				$this->BcMessage->setSuccess(__d('baser', 'オプション設定を保存しました。'));
-				$this->redirect('config');
+				$this->redirect(['action' => 'config']);
 			}
 		} else {
 
