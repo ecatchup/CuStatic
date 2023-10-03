@@ -33,6 +33,16 @@ CuStaticの機能拡張として
 以上で書き出されたファイルが定期的に別サーバへrsyncにて配信されます。
 
 
+## 動作しない時は
+
+* CuStatic/Shell/exec.sh の実行権限があるかどうかパーミッションを確認
+* phpにパスが通っているかどうかを確認
+  * 必要に応じて　CuStatic/Shell/exec.sh のphpパスを変更してください
+  * 例 php -> /user/local/bin/php など
+* 管理画面で指定したフォルダにapacheなどwebサーバの実行されているユーザーが書き込めるかどうか
+
+などなど
+
 ## Thanks
 
 - [http://basercms.net](http://basercms.net/)

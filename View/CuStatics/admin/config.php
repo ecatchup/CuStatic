@@ -36,280 +36,275 @@
 				</p>
 			</td>
 		</tr>
+	</table>
 
 <?php
-	foreach ($sites as $siteId => $siteName):
-		if (isset($blogContents[$siteId])) {
-			$blogContentsCount = count($blogContents[$siteId]);
-		} else {
-			$blogContentsCount = 0;
-		}
+	$modeList = Configure::read('CuStatic.mode');
+	foreach ($modeList as $modeId => $mode):
 ?>
-		<tr>
-			<th class="col-head bca-form-table__label">
-				<?php echo $this->BcForm->label('CuStaticConfig.page', __d('baser', '出力対象：')) ?>
-				<?php echo $siteName ?>
-			</th>
-			<td class="col-input bca-form-table__input">
+	<section class="bca-section" data-bca-section-type="form-group">
+		<div class="bca-collapse__action">
+			<button type="button" class="bca-collapse__btn" data-bca-collapse="collapse" data-bca-target="#<?php echo $mode['prefix'] ?>formAdminSettingBody" aria-expanded="false" aria-controls="<?php echo $mode['prefix'] ?>formAdminSettingBody">
+				<?php echo $mode['title'] ?>設定&nbsp;&nbsp;<i class="bca-icon--chevron-down bca-collapse__btn-icon"></i>
+			</button>
+		</div>
+		<div class="bca-collapse" id="<?php echo $mode['prefix'] ?>formAdminSettingBody" data-bca-state="">
+			<table>
+			<?php
+				foreach ($sites as $siteId => $siteName):
+					if (isset($blogContents[$siteId])) {
+						$blogContentsCount = count($blogContents[$siteId]);
+					} else {
+						$blogContentsCount = 0;
+					}
+			?>
+				<tr id="<?php echo $mode['prefix'] ?><?php echo $siteId ?>" class="<?php echo $mode['prefix'] ?>output">
+					<th class="col-head bca-form-table__label">
+						<?php echo $this->BcForm->label('CuStaticConfig.page', __d('baser', '出力対象：')) ?>
+						<span class="site_title"><?php echo $siteName ?></span>
+					</th>
+					<td class="col-input bca-form-table__input">
 
-				<table class="form-table bca-form-table">
-					<tr>
-						<td class="col-input bca-form-table__input">
+						<table class="form-table bca-form-table">
+							<tr>
+								<td class="col-input bca-form-table__input">
+									<?php
+										$prefix = '_' . $mode['prefix'] . $siteId;
+										echo $this->BcForm->input(
+											'CuStaticConfig.folder' . $prefix,
+											[
+												'type' => 'checkbox',
+												'label' => 'フォルダ',
+												'default' => true,
+												'class' => 'bca-checkbox__input page' . $prefix,
+											]
+										);
+									?>
+									<?php echo $this->BcForm->error('CuStaticConfig.folder' . $prefix); ?>
+								</td>
+							</tr>
+							<tr>
+								<td class="col-input bca-form-table__input">
+									<?php
+										$prefix = '_' . $mode['prefix'] . $siteId;
+										echo $this->BcForm->input(
+											'CuStaticConfig.page' . $prefix,
+											[
+												'type' => 'checkbox',
+												'label' => '固定ページ',
+												'default' => true,
+												'class' => 'bca-checkbox__input page' . $prefix,
+											]
+										);
+									?>
+									<?php echo $this->BcForm->error('CuStaticConfig.page' . $prefix); ?>
+								</td>
+							</tr>
 							<?php
-								$prefix = '_' . $siteId;
-								echo $this->BcForm->input(
-									'CuStaticConfig.folder' . $prefix,
-									[
-										'type' => 'checkbox',
-										'label' => 'フォルダ',
-										'default' => true,
-										'class' => 'bca-checkbox__input page' . $prefix,
-									]
-								);
+								if (isset($blogContents[$siteId])):
+									foreach ($blogContents[$siteId] as $blogContent):
+										$blogContentId = $blogContent['entity_id'];
+										$blogName = $blogContent['title'];
+										$prefix = '_' . $mode['prefix'] . $siteId . '_' . $blogContentId;
+										if ($blogContent['alias_id']) {
+											$prefix .= '_a_' . $blogContent['id'];
+										}
 							?>
-							<?php echo $this->BcForm->error('CuStaticConfig.folder' . $prefix); ?>
-						</td>
-					</tr>
-					<tr>
-						<td class="col-input bca-form-table__input">
+							<tr <?php if (!$this->BcContents->isAllowPublish($blogContent)): ?>style="background-color: #ccc"<?php endif ?>>
+								<td class="col-input bca-form-table__input">
+									<h4 class="blog_title blog_title<?php echo $prefix ?>"><?php echo $blogName ?></h4>
+									<?php
+										echo $this->BcForm->input(
+											'CuStaticConfig.blog_index' . $prefix,
+											[
+												'type' => 'checkbox',
+												'label' => '記事一覧',
+												'default' => true,
+												'class' => 'bca-checkbox__input blog' . $prefix,
+											]
+										);
+										echo $this->BcForm->input(
+											'CuStaticConfig.blog_category' . $prefix,
+											[
+												'type' => 'checkbox',
+												'label' => 'カテゴリ一覧',
+												'default' => true,
+												'class' => 'bca-checkbox__input blog' . $prefix,
+											]
+										);
+										echo $this->BcForm->input(
+											'CuStaticConfig.blog_tag' . $prefix,
+											[
+												'type' => 'checkbox',
+												'label' => 'タグ一覧',
+												'default' => true,
+												'class' => 'bca-checkbox__input blog' . $prefix,
+											]
+										);
+										echo $this->BcForm->input(
+											'CuStaticConfig.blog_date_year' . $prefix,
+											[
+												'type' => 'checkbox',
+												'label' => '年別一覧',
+												'default' => true,
+												'class' => 'bca-checkbox__input blog' . $prefix,
+											]
+										);
+										echo $this->BcForm->input(
+											'CuStaticConfig.blog_date_month' . $prefix,
+											[
+												'type' => 'checkbox',
+												'label' => '年月別一覧',
+												'default' => true,
+												'class' => 'bca-checkbox__input blog' . $prefix,
+											]
+										);
+										echo $this->BcForm->input(
+											'CuStaticConfig.blog_date_day' . $prefix,
+											[
+												'type' => 'checkbox',
+												'label' => '年月日別一覧',
+												'default' => true,
+												'class' => 'bca-checkbox__input blog' . $prefix,
+											]
+										);
+										echo $this->BcForm->input(
+											'CuStaticConfig.blog_author' . $prefix,
+											[
+												'type' => 'checkbox',
+												'label' => '作者一覧',
+												'default' => true,
+												'class' => 'bca-checkbox__input blog' . $prefix,
+											]
+										);
+										echo $this->BcForm->input(
+											'CuStaticConfig.blog_single' . $prefix,
+											[
+												'type' => 'checkbox',
+												'label' => '記事詳細',
+												'default' => true,
+												'class' => 'bca-checkbox__input blog' . $prefix,
+											]
+										);
+									?>
+									<?php echo $this->BcForm->error('CuStaticConfig.blog_index' . $prefix); ?>
+									<?php echo $this->BcForm->error('CuStaticConfig.blog_category' . $prefix); ?>
+									<?php echo $this->BcForm->error('CuStaticConfig.blog_tag' . $prefix); ?>
+									<?php echo $this->BcForm->error('CuStaticConfig.blog_date_year' . $prefix); ?>
+									<?php echo $this->BcForm->error('CuStaticConfig.blog_date_month' . $prefix); ?>
+									<?php echo $this->BcForm->error('CuStaticConfig.blog_date_day' . $prefix); ?>
+									<?php echo $this->BcForm->error('CuStaticConfig.blog_author' . $prefix); ?>
+									<?php echo $this->BcForm->error('CuStaticConfig.blog_single' . $prefix); ?>
+									<?php 
+										// CUSTOMIZE ADD 
+										// >>>
+									?>
+									<?php if ($modeId == 'diff'): ?>
+										<?php 
+											echo $this->BcForm->input(
+												'CuStaticConfig.blog_index_one' . $prefix,
+												[
+													'type' => 'checkbox',
+													'label' => '記事一覧（1ページ目のみ）',
+													'default' => false,
+													'class' => 'bca-checkbox__input blog' . $prefix,
+												]
+											);
+										?>
+										<?php echo $this->BcForm->error('CuStaticConfig.blog_index_one' . $prefix); ?>
+									<?php endif ?>
+									<?php 
+										// <<<
+									?>
+							<?php if ($modeId == 'diff'): ?>
+									<?php
+										echo $this->BcForm->input(
+											'CuStaticConfig.blog_callback' . $prefix,
+											[
+												'type' => 'textarea',
+												'placeholder' => '/index',
+												'rows' => 3,
+											]
+										);
+									?>
+									<p class="info">
+										※ ブログ記事を更新したタイミングで最新に更新するページのURLを記載してください。（トップページに新着情報を読み込んでいる場合など）<br>
+										※ 複数指定する場合は改行を入れて指定してください。<br>
+									</p>
+							<?php endif ?>
+								</td>
+							</tr>
 							<?php
-								$prefix = '_' . $siteId;
-								echo $this->BcForm->input(
-									'CuStaticConfig.page' . $prefix,
-									[
-										'type' => 'checkbox',
-										'label' => '固定ページ',
-										'default' => true,
-										'class' => 'bca-checkbox__input page' . $prefix,
-									]
-								);
+									endforeach;
+								endif;
 							?>
-							<?php echo $this->BcForm->error('CuStaticConfig.page' . $prefix); ?>
-						</td>
-					</tr>
-					<?php
-						if (isset($blogContents[$siteId])):
-							foreach ($blogContents[$siteId] as $bloContentId => $blogName):
-								$prefix = '_' . $siteId . '_' . $bloContentId;
-					?>
-					<tr>
-						<td class="col-input bca-form-table__input">
-							<h4 class="blog_title<?php echo $prefix ?>"><?php echo $blogName ?></h4>
-							<script>
-								$(function(){
-									$('.blog_title<?php echo $prefix ?>').on('click', function() {
-										var checked = $('input.blog<?php echo $prefix ?>:first:checkbox').prop('checked');
-										$('.blog<?php echo $prefix ?>').prop('checked', !checked);
-										return false;
-									});
-								});
-							</script>
-							<?php
-								echo $this->BcForm->input(
-									'CuStaticConfig.blog_index' . $prefix,
-									[
-										'type' => 'checkbox',
-										'label' => '記事一覧',
-										'default' => true,
-										'class' => 'bca-checkbox__input blog' . $prefix,
-									]
-								);
-								echo $this->BcForm->input(
-									'CuStaticConfig.blog_category' . $prefix,
-									[
-										'type' => 'checkbox',
-										'label' => 'カテゴリ一覧',
-										'default' => true,
-										'class' => 'bca-checkbox__input blog' . $prefix,
-									]
-								);
-								echo $this->BcForm->input(
-									'CuStaticConfig.blog_tag' . $prefix,
-									[
-										'type' => 'checkbox',
-										'label' => 'タグ一覧',
-										'default' => true,
-										'class' => 'bca-checkbox__input blog' . $prefix,
-									]
-								);
-								echo $this->BcForm->input(
-									'CuStaticConfig.blog_date_year' . $prefix,
-									[
-										'type' => 'checkbox',
-										'label' => '年別一覧',
-										'default' => true,
-										'class' => 'bca-checkbox__input blog' . $prefix,
-									]
-								);
-								echo $this->BcForm->input(
-									'CuStaticConfig.blog_date_month' . $prefix,
-									[
-										'type' => 'checkbox',
-										'label' => '年月別一覧',
-										'default' => true,
-										'class' => 'bca-checkbox__input blog' . $prefix,
-									]
-								);
-								echo $this->BcForm->input(
-									'CuStaticConfig.blog_date_day' . $prefix,
-									[
-										'type' => 'checkbox',
-										'label' => '年月日別一覧',
-										'default' => true,
-										'class' => 'bca-checkbox__input blog' . $prefix,
-									]
-								);
-								echo $this->BcForm->input(
-									'CuStaticConfig.blog_author' . $prefix,
-									[
-										'type' => 'checkbox',
-										'label' => '作者一覧',
-										'default' => true,
-										'class' => 'bca-checkbox__input blog' . $prefix,
-									]
-								);
-								echo $this->BcForm->input(
-									'CuStaticConfig.blog_single' . $prefix,
-									[
-										'type' => 'checkbox',
-										'label' => '記事詳細',
-										'default' => true,
-										'class' => 'bca-checkbox__input blog' . $prefix,
-									]
-								);
-							?>
-							<?php echo $this->BcForm->error('CuStaticConfig.blog_index' . $prefix); ?>
-							<?php echo $this->BcForm->error('CuStaticConfig.blog_category' . $prefix); ?>
-							<?php echo $this->BcForm->error('CuStaticConfig.blog_tag' . $prefix); ?>
-							<?php echo $this->BcForm->error('CuStaticConfig.blog_date_year' . $prefix); ?>
-							<?php echo $this->BcForm->error('CuStaticConfig.blog_date_month' . $prefix); ?>
-							<?php echo $this->BcForm->error('CuStaticConfig.blog_date_day' . $prefix); ?>
-							<?php echo $this->BcForm->error('CuStaticConfig.blog_author' . $prefix); ?>
-							<?php echo $this->BcForm->error('CuStaticConfig.blog_single' . $prefix); ?>
-						</td>
-					</tr>
-					<tr>
-						<td class="col-input bca-form-table__input">
-							<?php
-								echo $this->BcForm->input(
-									'CuStaticConfig.blog_callback' . $prefix,
-									[
-										'type' => 'textarea',
-										'placeholder' => '/index',
-										'rows' => 3,
-									]
-								);
-							?>
-							<p class="info">
-								※ ブログ記事を更新したタイミングで最新に更新するページのURLを記載してください。（トップページに新着情報を読み込んでいる場合など）<br>
-								※ 複数指定する場合は改行を入れて指定してください。<br>
-							</p>
-						</td>
-					</tr>
-					<?php
-							endforeach;
-						endif;
-					?>
-				</table>
+						</table>
+					</td>
+				</tr>
+		<?php endforeach; ?>
+			</table>
+		</div>
+	</section>
+	<?php endforeach; ?>
 
-			</td>
-		</tr>
-<?php endforeach; ?>
-<!--
-		<tr>
-			<th class="col-head bca-form-table__label">
-				<?php echo $this->BcForm->label('CuStaticConfig.page', __d('baser', '出力対象：固定ページ')) ?>
-			</th>
-			<td class="col-input bca-form-table__input">
-				<?php
-					echo $this->BcForm->input(
-						'CuStaticConfig.page',
-						[
-							'type' => 'checkbox',
-							'label' => '固定ページ',
-						]
-					);
-				?>
-				<?php echo $this->BcForm->error('CuStaticConfig.page'); ?>
-			</td>
-		</tr>
-		<tr>
-			<th class="col-head bca-form-table__label">
-				<?php echo $this->BcForm->label('CuStaticConfig.blog', __d('baser', '出力対象：ブログ')) ?>
-			</th>
-			<td class="col-input bca-form-table__input">
-				<?php
-					echo $this->BcForm->input(
-						'CuStaticConfig.blog_index',
-						[
-							'type' => 'checkbox',
-							'label' => '記事一覧',
-						]
-					);
-					echo $this->BcForm->input(
-						'CuStaticConfig.blog_category',
-						[
-							'type' => 'checkbox',
-							'label' => 'カテゴリ一覧',
-						]
-					);
-					echo $this->BcForm->input(
-						'CuStaticConfig.blog_tag',
-						[
-							'type' => 'checkbox',
-							'label' => 'タグ一覧',
-						]
-					);
-					echo $this->BcForm->input(
-						'CuStaticConfig.blog_date_year',
-						[
-							'type' => 'checkbox',
-							'label' => '年別一覧',
-						]
-					);
-					echo $this->BcForm->input(
-						'CuStaticConfig.blog_date_month',
-						[
-							'type' => 'checkbox',
-							'label' => '年月別一覧',
-						]
-					);
-					echo $this->BcForm->input(
-						'CuStaticConfig.blog_date_day',
-						[
-							'type' => 'checkbox',
-							'label' => '年月別一覧',
-						]
-					);
-					echo $this->BcForm->input(
-						'CuStaticConfig.blog_author',
-						[
-							'type' => 'checkbox',
-							'label' => '作者一覧',
-						]
-					);
-					echo $this->BcForm->input(
-						'CuStaticConfig.blog_single',
-						[
-							'type' => 'checkbox',
-							'label' => '記事詳細',
-						]
-					);
-				?>
-				<?php echo $this->BcForm->error('CuStaticConfig.blog_index'); ?>
-				<?php echo $this->BcForm->error('CuStaticConfig.blog_category'); ?>
-				<?php echo $this->BcForm->error('CuStaticConfig.blog_tag'); ?>
-				<?php echo $this->BcForm->error('CuStaticConfig.blog_date_year'); ?>
-				<?php echo $this->BcForm->error('CuStaticConfig.blog_date_month'); ?>
-				<?php echo $this->BcForm->error('CuStaticConfig.blog_date_day'); ?>
-				<?php echo $this->BcForm->error('CuStaticConfig.blog_author'); ?>
-				<?php echo $this->BcForm->error('CuStaticConfig.blog_single'); ?>
-			</td>
-		</tr>
--->
-		<?php echo $this->BcForm->dispatchAfterForm('option') ?>
+	<?php if (BcUtil::isAdminUser()): ?>
+	<section class="bca-section" data-bca-section-type="form-group">
+		<div class="bca-collapse__action">
+			<button type="button" class="bca-collapse__btn" data-bca-collapse="collapse" data-bca-target="#formAdminSettingIrregular" aria-expanded="false" aria-controls="formAdminSettingIrregular">
+				イレギュラー時設定（取扱注意）&nbsp;&nbsp;<i class="bca-icon--chevron-down bca-collapse__btn-icon"></i>
+			</button>
+		</div>
+		<div class="bca-collapse" id="formAdminSettingIrregular" data-bca-state="">
+			<table>
+				<tr>
+					<th class="col-head bca-form-table__label">
+						書出処理ステータス
+					</th>
+					<td class="col-input bca-form-table__input">
+						<?php
+							echo $this->BcForm->input(
+								'CuStaticConfig.status',
+								[
+									'type' => 'select',
+									'options' => [
+										0 => '0: 待機中',
+										1 => '1: 実行中', 
+									],
+									'default' => 0,
+									'style' => 'background-color: #ccc',
+									'disabled',
+								]
+							);
+						?>
+						<br>
+						<?php
+							echo $this->BcForm->input(
+								'CuStaticConfig.status_change',
+								[
+									'type' => 'checkbox',
+									'label' => 'ステータスを変更する',
+									'default' => false,
+									'value' => false,
+									'class' => 'bca-checkbox__input',
+								]
+							);
 
-	</table>
+						?>
+						<p class="info important">
+							※ CRON処理途中で止まった時等の緊急対応用ですので
+							通常は絶対に変更しないでください。<br>
+							※ ステータスを変更するとシステム全体に影響がございます。
+							十分に仕組みを理解した上で変更してください。<br>
+							※ 事前に必ずバックアップ後に変更してください。<br>
+						</p>
+					</td>
+				</tr>
+			</table>
+		</div>
+	</section>
+	<?php endif ?>
+
+	<?php echo $this->BcForm->dispatchAfterForm('option') ?>
 
 	<?php echo $this->BcFormTable->dispatchAfter() ?>
 
@@ -334,9 +329,59 @@
 </section>
 
 <script>
-$(function(){
+$(function() {
+	$('.site_title').click(function() {
+		var checked;
+		$(this).parent('th').next('td').find('.bca-checkbox input[type=checkbox]').each(function(i, elm) {
+			if (i == 0) {
+				checked = !$(elm).prop('checked');
+			}
+			$(elm).prop('checked', checked);
+		});
+	});
+	$('.blog_title').click(function() {
+		var checked;
+		$(this).parent().find('.bca-checkbox input[type=checkbox]').each(function(i, elm) {
+			if (i == 0) {
+				checked = !$(elm).prop('checked');
+			}
+			$(elm).prop('checked', checked);
+		});
+	});
+	$('#CuStaticConfigStatusChange').click(function() {
+		var status = $('#CuStaticConfigStatus');
+		if (status.attr('disabled')) {
+			if (confirm('ステータスを変更するとシステム全体に影響がございます。\n' +
+						'必ずバックアップ後に実行してください。\n\n' + 
+						'※ 変更後は元には戻せません。\n' + 
+						'※ 問題発生時に自己解決できる場合のみ変更するようにしてください。\n\n' + 
+						'ご確認いただけましたでしょうか？')) {
+				status.css('background-color' ,'#fff');
+				status.attr('disabled', false);
+			} else {
+				return false;
+			}
+		} else {
+			status.css('background-color' ,'#ccc');
+			status.attr('disabled', true);
+		}
+	})
 });
 </script>
 
 <style>
+.important {
+	color: red;
+	font-weight: bold;
+}
+.site_title,
+.blog_title {
+	cursor: pointer;
+}
+.bca-form-table__input {
+	padding: 5px 10px;
+}
+.info {
+	margin: 5px 10px;
+}
 </style>

@@ -14,7 +14,7 @@ class CuStaticsController extends AppController {
 		'BcMessage',
 	];
 
-		public function beforeFilter() {
+	public function beforeFilter() {
 		parent::beforeFilter();
 	}
 
@@ -23,7 +23,16 @@ class CuStaticsController extends AppController {
 	 */
 	public function admin_index() {
 
+		$this->pageTitle = '静的HTML出力';
+
 		if ($this->request->data) {
+
+			// 同期処理実行中の場合は強制終了
+			// if (file_exists('/PATH/TO/custatic-output-procfile')) {
+			// 	$this->BcMessage->setError(__d('baser', '公開サーバ同期中です。しばらくお待ち下さい。'));
+			// 	$this->redirect('index');
+			// }
+
 			$command = sprintf(Configure::read('CuStatic.command'), 'main');
 			$cmd = CakePlugin::path('CuStatic') . 'Shell' . DS . $command;
 			$this->log($cmd, LOG_CUSTATIC);
@@ -37,8 +46,6 @@ class CuStaticsController extends AppController {
 		}
 
 		$this->set('cuStaticConfigs', $this->CuStaticConfig->findExpanded());
-		$this->pageTitle = '静的HTML出力';
-
 	}
 
 	/**
@@ -46,7 +53,14 @@ class CuStaticsController extends AppController {
 	 */
 	public function admin_config() {
 
+		$this->pageTitle = '[静的HTML出力] オプション設定';
+
 		if ($this->request->data) {
+			if (!$this->request->data('CuStaticConfig.status_change')) {
+				unset($this->request->data['CuStaticConfig']['status']);
+			}
+			$user = BcUtil::loginUser();
+			$this->request->data['CuStaticConfig']['user_id'] = $user['id'];
 			$this->CuStaticConfig->set($this->request->data);
 			if (!$this->CuStaticConfig->validates()) {
 				$this->BcMessage->setError(__d('baser', '入力エラーです。内容を修正してください。'));
@@ -54,7 +68,7 @@ class CuStaticsController extends AppController {
 				$this->CuStaticConfig->saveKeyValue($this->request->data);
 				$this->CuStaticConfig->setDefaultStatus();
 				clearCache();
-				$this->BcMessage->setSuccess(__d('baser', 'オプション設定を保存しました。'));
+				$this->BcMessage->setSuccess(__d('baser', $this->pageTitle . 'を保存しました。'));
 				$this->redirect(['action' => 'config']);
 			}
 		} else {
@@ -76,12 +90,7 @@ class CuStaticsController extends AppController {
 			);
 			$this->set('sites', $sites);
 
-			$blogContents = $this->Content->find('list', [
-				'fields' => [
-					'entity_id',
-					'title',
-					'site_id',
-				],
+			$contents = $this->Content->find('all', [
 				'conditions' => [
 					'plugin' => 'Blog',
 					'type' => 'BlogContent',
@@ -90,12 +99,15 @@ class CuStaticsController extends AppController {
 					'site_id' => 'ASC',
 					'entity_id' => 'ASC',
 				],
+				'recursive' => -1,
 			]);
+
+			$blogContents = [];
+			foreach ($contents as $content) {
+				$blogContents[$content['Content']['site_id']][] = $content['Content'];
+			}
 			$this->set('blogContents', $blogContents);
-
 		}
-		$this->pageTitle = 'オプション設定';
-
 	}
 
 	/**

@@ -22,9 +22,9 @@ class CuStaticShell extends Shell {
 	/**
 	 * Welcome to CakePHP vx.x.x Console
 	 */
-	// public function _welcome() {
-	// 	// none
-	// }
+	public function _welcome() {
+		// none
+	}
 
 	/**
 	 * 動的コンテンツ出力 全件対象
@@ -93,6 +93,12 @@ class CuStaticShell extends Shell {
 			return false;
 		}
 
+		// 同期処理実行中の場合は強制終了
+		// if (file_exists('/PATH/TO/custatic-output-procfile')) {
+		// 	$this->log('[exportHtml] Currently being sync processed. Suspend.', LOG_CUSTATIC);
+		// 	return false;
+		// }
+		$this->setProgressBarStatus(1);
 		$now = date('Y-m-d H:i:s');
 
 		$options = array_merge([
@@ -166,8 +172,6 @@ class CuStaticShell extends Shell {
 		}
 		$progressMax = $progressMax + 3;
 
-		$this->setProgressBarStatus(1);
-
 		// 書き出し先のフォルダ
 		$exportPath = $CuStaticConfig['exportPath'];
 		$exportPath = rtrim($exportPath, DS) . DS;
@@ -188,15 +192,13 @@ class CuStaticShell extends Shell {
 		$this->log('exportPath: ' . $exportPath, LOG_CUSTATIC);
 
 		// ベースとなるURL作成
-		$baseUrl = Configure::read('CuStatic.baseUrl');
-		if (empty($baseUrl)) {
-			$baseUrl = Configure::read('BcEnv.siteUrl');
-		}
-		$baseUrl = rtrim($baseUrl, '/');
+		$baseUrl = CuStaticUtil::getBaserUrl();
 		$this->log('baseUrl: ' . $baseUrl, LOG_CUSTATIC);
 
 		$baseDir = ROOT;
 		$baseDir = rtrim($baseDir, DS) . DS;
+
+		$rsyncCommand = Configure::read('CuStatic.rsyncCommand');
 
 		// ===================================================
 		// Plugin内webrootファイル対応
@@ -216,19 +218,34 @@ class CuStaticShell extends Shell {
 				if (in_array($pluginName, $enablePlugins, true)) {
 					$pluginPath = Inflector::underscore($pluginName);
 					$path = $pluginFolder . $pluginName . DS . 'webroot' . DS;
-					if (file_exists($path)) {
-						$webrootFolder = new Folder($path);
-						$webrootFolder->copy([
-							'mode' => 0755,
-							'to' => $exportPath . $pluginPath,
-							'skip' => [
-								'admin',	// adminフォルダ内は不要
-							],
-							'scheme' => Folder::OVERWRITE,
-							'recursive' => true,
-						]);
-						$this->log('Copy From: ' . $path, LOG_CUSTATIC);
-						$this->log('Copy To  : ' . $exportPath . $pluginPath, LOG_CUSTATIC);
+					$distPath = $exportPath . $pluginPath . DS;
+					if ($rsyncCommand) {
+						new Folder($distPath, true, 0755);
+						$cmd = sprintf(
+									'%s %s %s',
+									$rsyncCommand,
+									$path,
+									$distPath
+						);
+						$output = '';
+						$resutCode = '';
+						exec($cmd, $output, $resutCode);
+						$this->log([$cmd, $output, $resutCode], LOG_CUSTATIC);
+					} else {
+						if (file_exists($path)) {
+							$webrootFolder = new Folder($path);
+							$webrootFolder->copy([
+								'mode' => 0755,
+								'to' => $distPath,
+								'skip' => [
+									'admin',	// adminフォルダ内は不要
+								],
+								'scheme' => Folder::OVERWRITE,
+								'recursive' => true,
+							]);
+							$this->log('Copy From: ' . $path, LOG_CUSTATIC);
+							$this->log('Copy To  : ' . $distPath, LOG_CUSTATIC);
+						}
 					}
 				}
 			}
@@ -250,18 +267,33 @@ class CuStaticShell extends Shell {
 		];
 		foreach ($staticFolders as $staticFolder) {
 			$path = $baseDir . $staticFolder . DS;
-			$folder = new Folder($path);
-			$folder->copy([
-				'mode' => 0755,
-				'to' => $exportPath . $staticFolder,
-				'skip' => [
-					'admin',	// adminフォルダ内は不要
-				],
-				'scheme' => Folder::OVERWRITE,
-				'recursive' => true,
-			]);
+			$distPath = $exportPath . $staticFolder . DS;
+			if ($rsyncCommand) {
+				new Folder($distPath, true, 0755);
+				$cmd = sprintf(
+							'%s %s %s',
+							$rsyncCommand,
+							$path,
+							$distPath
+				);
+				$output = '';
+				$resutCode = '';
+				exec($cmd, $output, $resutCode);
+				$this->log([$cmd, $output, $resutCode], LOG_CUSTATIC);
+			} else {
+				$folder = new Folder($path);
+				$folder->copy([
+					'mode' => 0755,
+					'to' => $distPath,
+					'skip' => [
+						'admin',	// adminフォルダ内は不要
+					],
+					'scheme' => Folder::OVERWRITE,
+					'recursive' => true,
+				]);
+			}
 			$this->log('Copy From: ' . $path, LOG_CUSTATIC);
-			$this->log('Copy To  : ' . $exportPath . $staticFolder, LOG_CUSTATIC);
+			$this->log('Copy To  : ' . $distPath, LOG_CUSTATIC);
 		}
 
 		$this->setProgressBar(++$progress, $progressMax);
@@ -285,6 +317,7 @@ class CuStaticShell extends Shell {
 					],
 					'recursive' => -1,
 				]);
+				$optPrefix = '';
 			} else {
 				// 差分でのページを対象
 				$contents = $this->CuStaticContent->find('all', [
@@ -293,10 +326,11 @@ class CuStaticShell extends Shell {
 					],
 					'order' => [
 						'site_id' => 'ASC',
-						'id' => 'ASC',
+						'url' => 'DESC',
 					],
 					'recursive' => -1,
 				]);
+				$optPrefix = 'diff_';
 			}
 
 			foreach ($contents as $content) {
@@ -322,7 +356,7 @@ class CuStaticShell extends Shell {
 
 				switch ($content['type']):
 					case 'ContentFolder':
-						$preifx = '_' . $siteId;
+						$preifx = '_' . $optPrefix . $siteId;
 						if ($CuStaticConfig['folder' . $preifx]) {
 							$url = '/' . $pageUrl;
 							$path = $exportPath . $pagePath ;
@@ -332,7 +366,7 @@ class CuStaticShell extends Shell {
 						break;
 
 					case 'Page':
-						$preifx = '_' . $siteId;
+						$preifx = '_' . $optPrefix . $siteId;
 						if ($CuStaticConfig['page' . $preifx]) {
 							$url = '/' . $pageUrl;
 							$path = $exportPath . $pagePath;
@@ -342,10 +376,10 @@ class CuStaticShell extends Shell {
 						break;
 
 					case 'BlogContent':
-						$preifx = '_' . $siteId  . '_' . $content['entity_id'];
+						$preifx = '_' . $optPrefix . $siteId  . '_' . $content['entity_id'];
 						$blogContent = $this->BlogContent->find('first', [
 							'conditions' => [
-								'BlogContent.id' => $content['entity_id']
+								'BlogContent.id' => $content['entity_id'],
 							],
 							'recursive' => -1
 						]);
@@ -366,9 +400,6 @@ class CuStaticShell extends Shell {
 							$targetPath = str_replace('/', DS, $targetUrl);
 							$url = '/' . $pageUrl . $targetUrl;
 							$path = $exportPath . $pagePath . $targetPath;
-
-							$dir = new Folder($exportPath . $pagePath, 0777);
-							$dir->delete();
 
 							$this->makeHtml($url, $path . '.html', $status);
 
@@ -426,7 +457,7 @@ class CuStaticShell extends Shell {
 									$blogPostsCount = $this->BlogPost->find('count', [
 										'conditions' => [
 											'BlogTag.id' => $blogTag['BlogTag']['id'],
-											'BlogPost.blog_content_id' => $content['entity_id']
+											'BlogPost.blog_content_id' => $content['entity_id'],
 										],
 										'joins' => [
 											['table' => 'blog_posts_blog_tags',
@@ -455,6 +486,7 @@ class CuStaticShell extends Shell {
 						$dateFormats = [];
 						if ($CuStaticConfig['blog_date_year' . $preifx]) $dateFormats[] = 'Y';
 						if ($CuStaticConfig['blog_date_month' . $preifx]) $dateFormats[] = 'Y/n';
+						// if ($CuStaticConfig['blog_date_day' . $preifx]) $dateFormats[] = 'Y/m/d';
 						if ($CuStaticConfig['blog_date_day' . $preifx]) $dateFormats[] = 'Y/n/j';	// カレンダーウィジェットのリンク先が日付前ゼロない為
 						if ($dateFormats) {
 							foreach ($dateFormats as $dateFormat) {
@@ -521,7 +553,7 @@ class CuStaticShell extends Shell {
 						break;
 
 					case 'BlogPost':
-						$preifx = '_' . $siteId  . '_' . $content['content_id'];
+						$preifx = '_' . $optPrefix . $siteId  . '_' . $content['content_id'];
 						if ($CuStaticConfig['blog_single'. $preifx]) {
 							$blogPost = $this->BlogPost->find('first', [
 								'conditions' => [
@@ -662,12 +694,6 @@ class CuStaticShell extends Shell {
 	private function makeHtml($url, $path, $create)  {
 		if ($create) {
 			$this->saveHtml($url, $path);
-
-			// // requestActionにてメモリ消費が多いので別プロセス化する
-			// $command = sprintf(Configure::read('CuStatic.command2'), 'html', $url, $path);
-			// $cmd = CakePlugin::path('CuStatic') . 'Shell' . DS . $command;
-			// exec($cmd);
-
 		} else {
 			$this->deleteHtml($url, $path);
 		}
@@ -676,24 +702,21 @@ class CuStaticShell extends Shell {
 	/**
 	 * saveHtml
 	 *
-	 * @param type $url
-	 * @param type $path
+	 * @param string $url
+	 * @param string $path
 	 */
 	private function saveHtml($url, $path) {
-		// 生成ファイルはデコード
+		// 生成ファイル名はデコード
 		$path = urldecode($path);
 
-		$baseUrl = Configure::read('BcEnv.sslUrl');
-		if (empty($baseUrl)) {
-			$baseUrl = Configure::read('BcEnv.siteUrl');
-		}
+		$baseUrl = CuStaticUtil::getBaserUrl();
 		$url = rtrim($baseUrl, DS) . $url;
 
 		$this->log('[saveHtml] url: ' . $url, LOG_CUSTATIC);
 		$this->log('[saveHtml] path: ' . $path, LOG_CUSTATIC);
 
 		static $ch;
-    	if (empty($ch)) {
+		if (empty($ch)) {
 			$ch = curl_init();
 			curl_setopt($ch, CURLOPT_HEADER, 0);
 			curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
@@ -708,23 +731,6 @@ class CuStaticShell extends Shell {
 			$this->log('[saveHtml] Curl error: ' . curl_error($ch), LOG_CUSTATIC);
 		}
 
-		// $this->log('[saveHtml] url: ' . $url, LOG_CUSTATIC);
-		// $this->log('[saveHtml] path: ' . $path, LOG_CUSTATIC);
-
-		// App::uses('CakeObject', 'Core');
-		// $CakeObject = new CakeObject();
-		// try {
-		// 	$getData = $CakeObject->requestAction($url, ['return' => true, 'bare' => false]);
-
-		// } catch (Exception $e) {
-		// 	$this->log('[saveHtml] RequestAction error: ' . $url, LOG_CUSTATIC);
-		// 	return;
-		// }
-		// unset($CakeObject);
-
-		// http://www.mikame.net/pr/archives/781
-		//echo sprintf( '%8s %8dk : %s', ($getData) ? 'Success' : 'Failed', memory_get_usage() / 1024, $url)."\n";
-
 		// html内のURL書き換え処理
 		$getData = $this->convertHtmlLink($getData);
 
@@ -735,7 +741,6 @@ class CuStaticShell extends Shell {
 		// HTML書き出し
 		file_put_contents($path, $getData);
 		chmod($path, 0664);
-
 	}
 
 	/**
@@ -898,12 +903,13 @@ class CuStaticShell extends Shell {
 	 */
 	private function execOptionsProcess() {
 
-		// 処理を追加する
+		// ※ 必要に応じて処理を追加してください
 
 		// 指定ファイルを移設するサンプル
-		/**
+		/*
 		$CuStaticConfig = $this->CuStaticConfig->findExpanded();
 		$exportPath = $CuStaticConfig['exportPath'];
+
 		// 指定ファイル書き出し
 		$copyFiles = [
 			'apple-touch-icon-precomposed.png' => 'apple-touch-icon-precomposed.png',
@@ -926,12 +932,10 @@ class CuStaticShell extends Shell {
 			$this->log('[execOptionsProcess] copy-direcotory: ' . ROOT . DS . $before . ' => ' . $exportPath . $after, LOG_CUSTATIC);
 			system('cp -r ' . ROOT . DS . $before . ' ' . $exportPath . $after);
 		}
-		 */
 
-		// 書き出し完了後にファイルを生成するサンプル
-		/**
 		// 同期実行ファイルを設置する
 		touch("/PATH/TO/custatic-output-endfile");
+		touch("/PATH/TO/custatic-output-procfile");
 		*/
 
 		return true;

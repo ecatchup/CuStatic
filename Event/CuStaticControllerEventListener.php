@@ -90,7 +90,8 @@ class CuStaticControllerEventListener extends BcControllerEventListener {
 		// 設定画面で指定されている追加のURLの処理
 		$CuStaticConfigModel = ClassRegistry::init('CuStatic.CuStaticConfig');
 		$CuStaticConfig = $CuStaticConfigModel->findExpanded();
-		$prefix = sprintf('_%s_%s', $data['site_id'], $data['content_id']);
+		$callbackPrefix = Configure::read('CuStatic.mode.diff.prefix');
+		$prefix = sprintf('_%s%s_%s', $callbackPrefix, $data['site_id'], $data['content_id']);
 		if (!empty($CuStaticConfig['blog_callback' . $prefix])) {
 			$blogCallback = preg_replace("/\r\n|\r|\n/", PHP_EOL, $CuStaticConfig['blog_callback' . $prefix]);
 			$urls = explode(PHP_EOL, $blogCallback);

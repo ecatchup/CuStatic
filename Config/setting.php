@@ -17,9 +17,9 @@ App::uses('CuStaticUtil', 'CuStatic.Lib');
 $config['CuStatic'] = [
 	'exportPath' => TMP . 'static' . DS,
 	'baseUrl' => '',
-	'command' => 'exec.sh %s > /dev/null 2>&1 &',
-	// 'command' => 'exec.sh %s  > /dev/null &', // サーバによって動かない場合はこのcommandを利用
-	'command2' => 'exec.sh %s %s %s',
+	'command' => 'exec.sh %s > /dev/null &',
+	'rsyncCommand' => '',
+	// 'rsyncCommand' => 'rsync -avh --delete --exclude="admin"',
 	'plugins' => [
 		'Blog',
 		'BurgerEditor',
@@ -29,7 +29,18 @@ $config['CuStatic'] = [
 		'ContentFolder',
 		'BlogContent',
 		'BlogPost',
-	]
+	],
+	'mode' => [
+		'all' => [
+			'title' => '全件書出',
+			'prefix' => '',
+		],
+		// 定期実行書出を利用するときはここのコメントを外してCRONをセットしてください
+		// 'diff' => [
+		// 	'title' => '定期実行書出（CRON）',
+		// 	'prefix' => 'diff_',
+		// ],
+	],
 ];
 
 /**

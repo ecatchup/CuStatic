@@ -79,6 +79,7 @@ class CuStaticModelEventListener extends BcModelEventListener {
 			$modelData['Content'] = $params['Content'];
 		}
 		$data = CuStaticUtil::getContentsData($modelData);
+		CuStaticUtil::setContentsData($data);
 
 		$data['type'] = 'BlogPost';
 		$data['content_id'] = $modelData['BlogPost']['blog_content_id'];
