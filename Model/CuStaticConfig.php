@@ -4,10 +4,6 @@ class CuStaticConfig extends AppModel {
 
 	public $name = 'CuStaticConfig';
 
-	public $actsAs = [
-		'BcCache',
-	];
-
 	public function __construct($id = false, $table = null, $ds = null) {
 		parent::__construct($id, $table, $ds);
 
@@ -23,7 +19,7 @@ class CuStaticConfig extends AppModel {
 			],
 		];
 	}
-
+	
 	/**
 	 * 必要な初期値がない場合追加する
 	 */

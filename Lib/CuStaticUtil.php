@@ -71,4 +71,19 @@ class CuStaticUtil {
 			}
 		}
 	}
+
+	/*
+	 * ページを作成する際に利用するURLの取得
+	 */
+	public static function getBaserUrl() {
+		$baseUrl = Configure::read('CuStatic.baseUrl');
+		if (empty($baseUrl)) {
+			$baseUrl = Configure::read('BcEnv.sslUrl');
+			if (empty($baseUrl)) {
+				$baseUrl = Configure::read('BcEnv.siteUrl');
+			}
+		}
+		$baseUrl = rtrim($baseUrl, '/');
+		return $baseUrl;
+	}
 }
