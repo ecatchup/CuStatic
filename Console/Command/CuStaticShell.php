@@ -31,6 +31,10 @@ class CuStaticShell extends Shell {
 	 */
 	public function main() {
 
+		// githubのソースなどCakePHP標準の配置にする場合
+		// Configure::write('App.www_root', ROOT . DS . APP_DIR . DS . WEBROOT_DIR . DS);
+
+		// baserCMS配布時の配置
 		Configure::write('App.www_root', ROOT . DS);
 
 		$this->log('[exportHtml] main Start ===================================================', LOG_CUSTATIC);
@@ -46,6 +50,10 @@ class CuStaticShell extends Shell {
 	 */
 	public function diff() {
 
+		// githubのソースなどCakePHP標準の配置にする場合
+		// Configure::write('App.www_root', ROOT . DS . APP_DIR . DS . WEBROOT_DIR . DS);
+
+		// baserCMS配布時の配置
 		Configure::write('App.www_root', ROOT . DS);
 
 		$this->log('[exportHtml] diff Start ===================================================', LOG_CUSTATIC);
@@ -66,10 +74,15 @@ class CuStaticShell extends Shell {
 		// args[0] $url  : URL
 		// args[1] $path : 書き出しファイル名（フルパス）
 
-		// requestAction時に ViewでのURL生成を正しくする為、下記を明示的に設定
+		// requestAction時に ViewでのURL生成を正しくする為、下記を明示的に設定設置場所により変更する
 		Configure::write('App.baseUrl', '/');
 		Configure::write('App.dir', '');
 		Configure::write('App.webroot', '');
+
+		// githubのソースなどCakePHP標準の配置にする場合
+		// Configure::write('App.www_root', ROOT . DS . APP_DIR . DS . WEBROOT_DIR . DS);
+
+		// baserCMS配布時の配置
 		Configure::write('App.www_root', ROOT . DS);
 
 		$this->saveHtml(h($this->args[0]), h($this->args[1]));
@@ -195,7 +208,7 @@ class CuStaticShell extends Shell {
 		$baseUrl = CuStaticUtil::getBaserUrl();
 		$this->log('baseUrl: ' . $baseUrl, LOG_CUSTATIC);
 
-		$baseDir = ROOT;
+		$baseDir = Configure::read('App.www_root');
 		$baseDir = rtrim($baseDir, DS) . DS;
 
 		$rsyncCommand = Configure::read('CuStatic.rsyncCommand');
@@ -392,7 +405,7 @@ class CuStaticShell extends Shell {
 								$conditionAllowPublish,
 							],
 							'recursive' => -1,
-						 ]);
+						]);
 
 						// index
 						if ($CuStaticConfig['blog_index' . $preifx]) {
@@ -485,9 +498,9 @@ class CuStaticShell extends Shell {
 						// date
 						$dateFormats = [];
 						if ($CuStaticConfig['blog_date_year' . $preifx]) $dateFormats[] = 'Y';
-						if ($CuStaticConfig['blog_date_month' . $preifx]) $dateFormats[] = 'Y/n';
-						// if ($CuStaticConfig['blog_date_day' . $preifx]) $dateFormats[] = 'Y/m/d';
-						if ($CuStaticConfig['blog_date_day' . $preifx]) $dateFormats[] = 'Y/n/j';	// カレンダーウィジェットのリンク先が日付前ゼロない為
+						if ($CuStaticConfig['blog_date_month' . $preifx]) $dateFormats[] = 'Y/m';
+						if ($CuStaticConfig['blog_date_day' . $preifx]) $dateFormats[] = 'Y/m/d';
+						if ($CuStaticConfig['blog_date_day' . $preifx]) $dateFormats[] = 'Y/m/j';	// カレンダーウィジェットのリンク先が日付前ゼロない為
 						if ($dateFormats) {
 							foreach ($dateFormats as $dateFormat) {
 								$dateCount = array();
@@ -678,10 +691,11 @@ class CuStaticShell extends Shell {
 			}
 			$folder->create($targetPath, 0777);
 
+			$targetUrl = rtrim($targetUrl, '/');
 			$pageMax = ceil($blogPostsCount / $listCount);
-			for ($i = 2; $i <= $pageMax; $i++) {
+			for ($i = 1; $i <= $pageMax; $i++) {
 				$url = $targetUrl . '/page:' . $i;
-				$path = $targetPath . DS . $i . '.html';
+				$path = $targetPath . DS . 'page-' . $i . '.html';
 				$this->makeHtml($url, $path, true);
 			}
 		}
@@ -841,7 +855,7 @@ class CuStaticShell extends Shell {
 			}
 
 			// ページネーションの /page:2 等の対応
-			$url = preg_replace('/\/page\:(\d+)$/', '/$1', $url);
+			$url = preg_replace('/\/page\:(\d+)$/', '/page-$1', $url);
 
 			// SPサイトからPCサイトへの切替URLに対応
 			// - 公開側はHTMLのためクエリーを除外する
