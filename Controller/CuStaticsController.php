@@ -80,6 +80,9 @@ class CuStaticsController extends AppController {
 					'id',
 					'display_name',
 				],
+				'conditions' => [
+					'status' => true,
+				],
 				'order' => [
 					'id' => 'ASC',
 				],
