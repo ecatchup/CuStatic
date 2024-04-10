@@ -1,4 +1,5 @@
 <?php
+
 /**
  * [Config] CuStatic
  *
@@ -15,8 +16,9 @@ CakeLog::config(
 App::uses('CuStaticUtil', 'CuStatic.Lib');
 
 $config['CuStatic'] = [
-	'exportPath' => TMP . 'static' . DS,
-	'baseUrl' => '',
+	'exportPath' => TMP . 'static' . DS, // HTMLファイル出力先初期値（通常は管理画面設定で指定する）
+	'baseUrl' => '', // 動的生成ページのURLを個別に指定する場合の設定（例：'https://hoge:huga@localhost/'）
+	'exportBaseUrl' => '',	// 静的HTML出力したファイルのURLが管理側と異なる場合に設定（例：'https://www.example.com/'）
 	'command' => 'exec.sh %s > /dev/null &',
 	'rsyncCommand' => '',
 	// 'rsyncCommand' => 'rsync -avh --delete --exclude="admin"',

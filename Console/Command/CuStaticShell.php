@@ -801,10 +801,25 @@ class CuStaticShell extends Shell {
 		$dom->validateOnParse = true;
 		$dom->loadHTML($getData);
 
+		$orgBaseUrl = CuStaticUtil::getBaserUrl();
+		if (substr($orgBaseUrl, -1) !== '/') {
+			$orgBaseUrl .= '/';
+		}
+		$baseUrl = Configure::read('CuStatic.exportBaseUrl');
+		if ($baseUrl) {
+			if (substr($baseUrl, -1) !== '/') {
+				$baseUrl .= '/';
+			}
+		}
+
 		$es = $dom->getElementsByTagName('a');
 		foreach ($es as $e) {
 
 			$href = trim($e->getAttribute('href'));
+
+			if ($baseUrl) {
+				$href = str_replace($orgBaseUrl, $baseUrl, $href);
+			}
 
 			// 外部リンク、アンカー等は書き換えない
 			if (preg_match('/^(https?|ftp|tel:|mailto:|#|javascript)/', $href)) {
@@ -875,6 +890,16 @@ class CuStaticShell extends Shell {
 			}
 
 			$e->setAttribute('href', $url);
+		}
+
+		if ($baseUrl) {
+			$link = $dom->getElementsByTagName('link');
+			foreach ($link as $l) {
+				// 公開側ドメインに変更
+				$url = trim($l->getAttribute('href'));
+				$url = str_replace($orgBaseUrl, $baseUrl, $url);
+				$l->setAttribute('href', $url);
+			}
 		}
 
 		$getData2 = $dom->saveHTML();
