@@ -1,54 +1,71 @@
 CuStatic（静的HTML出力）プラグイン
 ==========
 
-CuStatic（静的HTML出力）プラグインは、管理画面で作成したWebサイト内のページを静的なHTMLファイルとして出力することができるプラグインです。
+CuStatic は、baserCMS で作成した Web サイト内のページを **静的な HTML ファイルとして書き出す** baserCMS5 用プラグインです。
 
-HTMLの出力対象は、固定ページ、ブログ（記事一覧、記事詳細、各種一覧）、フォルダになります。
-また、HTML内で利用される画像やCSS，JSなどのファイルもあわせて出力します。
+固定ページ・フォルダ・ブログ（記事一覧／記事詳細／カテゴリ別／タグ別／日付別／著者別／RSS）を HTML として出力し、あわせて CSS・JS・画像などの静的アセット（テーマ・プラグインの `webroot` を含む）も出力先へコピーします。
 
-## Installation
+## 動作環境
 
-1. 圧縮ファイルを解凍後、BASERCMS/app/Plugin/CuStatic に配置します。
-2. 管理システムのプラグイン管理にアクセスし、表示されている CuStatic プラグイン をインストール（有効化）して下さい。
-3. オプション設定画面にアクセスし、出力先のフォルダ、及び、利用する出力対象をサイト、コンテンツ毎に有無を設定し保存します。
-4. 静的HTML出力画面より静的HTML出力ボタンを押すと、HTMLが生成されます。
-5. シェルプログラムにて書出を行うためシェルプログラムが動作する環境準備および  Shell/exec.sh の実行権限を付与してください。
+- baserCMS 5.x
+- PHP 8.1 以上 / CakePHP 5
+- `ext-pcntl`（任意）: 並列書き出しに使用。**Linux / macOS のみ**（Windows 非対応）で、CLI の `php.ini` で有効化が必要です。無い環境では自動的にシリアル実行にフォールバックします。
 
-### TODO
-CuStaticの機能拡張として
+## インストール
 
-* 時限公開
-* 時限非公開
-* 下書き時限公開
-* 複数サーバー同期
+1. 管理画面から、またはFTPで `plugins`フォルダにプラグインをアップロードします。（`plugins/CuStatic`）
+2. 管理システムの「プラグイン管理」から **CuStatic** をインストール（有効化）します。
+3. 「オプション設定」画面で出力先フォルダなどを設定し、保存します。
 
-などなど、別途カスタマイズにて対応可能です。
+## 使い方（管理画面）
 
-## 別サーバへ配信する方法
-1. 管理画面の静的書き出しプラグインの設定にて一時書き出し先を指定します
-1. Console/Command/CuStticShell.php execOptionsProcess() にて完了後生成ファイルパスを指定します
-1. Shell/sync.sh にて完了後生成ファイルパスと一時書き出し先と転送先を指定します
-1. cronなどの定期実行でShell/sync.shを定期実行させます
+管理画面メニュー「コンテンツ」内に「静的HTML出力」が追加されます。
 
-以上で書き出されたファイルが定期的に別サーバへrsyncにて配信されます。
+### オプション設定
 
+`/baser/admin/cu-static/cu_statics/config`
 
-## 動作しない時は
+| 項目 | 説明 |
+|------|------|
+| 出力先（必須） | HTML の書き出し先フォルダの絶対パス。**全件出力時は出力先フォルダ内を一旦削除してから出力**します。 |
+| ベースURL | HTML 取得元のベースURL。空の場合はサイト設定（`BcEnv`）の URL を使用します。 |
+| rsyncコマンド | アセットコピーに使う rsync コマンド。空の場合は PHP でのファイルコピーを行います。 |
+| 出力対象 | サイト × コンテンツ種別（フォルダ／固定ページ／ブログの各種一覧・詳細）のチェックボックス。 |
 
-* CuStatic/Shell/exec.sh の実行権限があるかどうかパーミッションを確認
-* phpにパスが通っているかどうかを確認
-  * 必要に応じて　CuStatic/Shell/exec.sh のphpパスを変更してください
-  * 例 php -> /user/local/bin/php など
-* 管理画面で指定したフォルダにapacheなどwebサーバの実行されているユーザーが書き込めるかどうか
+### 静的HTML出力
 
-などなど
+`/baser/admin/cu-static/cu_statics/index`
 
-## Thanks
+「静的HTML出力」ボタンで書き出しをバックグラウンド実行します。
+進捗バーと最新ログをリアルタイム表示（ポーリング）し、開始/終了時刻・経過時間の表示とログファイルのダウンロードもできます。
 
-- [http://basercms.net](http://basercms.net/)
-- [http://wiki.basercms.net/](http://wiki.basercms.net/)
-- [http://cakephp.jp](http://cakephp.jp)
+## 出力対象
 
-License
--------
-Lincensed under the MIT lincense since version 2.0
+- 固定ページ / フォルダ（インデックス）
+- ブログ: 記事一覧（＋ページネーション）・RSS・カテゴリ別・タグ別・日付別（年／月／日）・著者別・記事詳細
+- 静的アセット: `webroot` 直下の `css/js/img/files`、および対象サイトのテーマ・プラグインの `webroot`（URL `/{アンダースコア名}/` に対応。例: テーマ `BcThemeSample` → `bc_theme_sample/`）
+
+※ 動的なコンテンツ（メールフォーム、サイト内検索など）には非対応です。
+必要な場合は外部サービスで対応してください。
+
+## ログ
+
+書き出しログは `logs/cu_static.log` に出力されます。並列実行時はどのワーカーの出力かを判別できるよう、各行にプロセスID（`[pid:12345]`）を付与します。
+
+## 設定のカスタマイズ
+
+`config/setting_customize.php.default` を `config/setting_customize.php` にコピーすると、既定値を上書きできます（`.gitignore` 対象のためコミットされません）。
+
+| キー | 既定値 | 説明 |
+|------|--------|------|
+| `CuStatic.defaultWorkers` | `4` | 既定の並列ワーカー数 |
+| `CuStatic.cronEnabled` | `false` | 差分書き出し（CRON）機能の有効化フラグ |
+| `CuStatic.types` | `Page` / `ContentFolder` / `BlogContent` | 書き出し対象のコンテンツ種別 |
+| `CuStatic.plugins` | `BcBlog` / `BcFront` | `webroot` コピー対象のプラグイン |
+| `CuStatic.httpMaxAttempts` | `3` | HTML取得の最大試行回数（5xx・接続エラー時にリトライ。1でリトライなし） |
+| `CuStatic.chunkSize` | `1000` | ブログ投稿集計時のチャンク件数（大量投稿時のメモリ抑制） |
+| `CuStatic.lockTimeout` | `3600` | 実行ロックの有効期限（秒）。開始からこの秒数を超えた実行中フラグは stale として次回実行が奪取 |
+
+## ライセンス
+
+MIT License（v2.0 以降）
