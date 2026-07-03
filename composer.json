@@ -1,0 +1,24 @@
+{
+    "name": "catchup/cu-static",
+    "description": "CuStatic plugin for baserCMS5 - Static HTML export plugin",
+    "homepage": "https://catchup.co.jp/",
+    "type": "cakephp-plugin",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.1"
+    },
+    "suggest": {
+        "ext-pcntl": "並列出力（--workers）に使用。無い環境ではシリアル実行に自動フォールバックします"
+    },
+    "vendor-dir": "../../vendor",
+    "autoload": {
+        "psr-4": {
+            "CuStatic\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "CuStatic\\Test\\": "tests/"
+        }
+    }
+}
