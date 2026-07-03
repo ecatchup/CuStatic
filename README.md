@@ -66,6 +66,10 @@ CuStatic は、baserCMS で作成した Web サイト内のページを **静的
 | `CuStatic.chunkSize` | `1000` | ブログ投稿集計時のチャンク件数（大量投稿時のメモリ抑制） |
 | `CuStatic.lockTimeout` | `3600` | 実行ロックの有効期限（秒）。開始からこの秒数を超えた実行中フラグは stale として次回実行が奪取 |
 
-## ライセンス
+## Thanks
+- [http://basercms.net](http://basercms.net/)
+- [http://wiki.basercms.net/](http://wiki.basercms.net/)
+- [http://cakephp.jp](http://cakephp.jp)
 
-MIT License（v2.0 以降）
+## License
+Lincensed under the MIT lincense since version 2.0
