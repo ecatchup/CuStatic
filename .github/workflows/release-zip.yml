@@ -1,0 +1,35 @@
+name: Release Plugin ZIP
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+env:
+  ZIP_NAME: ${{ github.event.repository.name }}.zip
+  FOLDER_NAME: ${{ github.event.repository.name }}
+
+jobs:
+  build-and-upload:
+    runs-on: ubuntu-latest
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+
+      - name: プラグインディレクトリをZIP化
+        run: |
+          mkdir "$FOLDER_NAME"
+          find . -maxdepth 1 -not -name "$FOLDER_NAME" -not -name "." -exec mv {} "$FOLDER_NAME/" \;
+          zip -r "$ZIP_NAME" "$FOLDER_NAME" \
+              -x "$FOLDER_NAME/.git/*" \
+              -x "$FOLDER_NAME/.github/*" \
+              -x "*.zip"
+
+      - name: リリースにZIPをアップロード
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.ZIP_NAME }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
