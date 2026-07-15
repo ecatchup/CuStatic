@@ -257,6 +257,17 @@ class CuStaticService implements CuStaticServiceInterface
                     // HTMLファイルのみ内部リンクを書き換え（RSS等はスキップ）
                     if (pathinfo($path, PATHINFO_EXTENSION) === 'html') {
                         $content = $this->convertHtmlLinks($content, $url);
+                        // 生成HTMLのフィルタフック。アドオンは <script>/<link> の注入や
+                        // 追加のリンク書き換え等に利用できる。リスナーが文字列を返せば置き換わる。
+                        // 並列（fork子）でも発火する（グローバル登録リスナーは fork 前に登録済み）。
+                        $filtered = $this->dispatchEvent('CuStatic.filterHtml', [
+                            'html' => $content,
+                            'url' => $url,
+                            'path' => $path,
+                        ])->getResult();
+                        if (is_string($filtered)) {
+                            $content = $filtered;
+                        }
                     }
                     file_put_contents($path, $content);
                     $this->writeLog(sprintf('[exportHtml][%s] 出力完了: %s', $this->modeLabel, $path));
