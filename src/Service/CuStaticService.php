@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace CuStatic\Service;
 
 use Cake\Core\Configure;
+use Cake\Event\EventDispatcherTrait;
 use Cake\Http\Client;
 use Cake\Log\Log;
 use Cake\ORM\TableRegistry;
@@ -24,6 +25,17 @@ use RuntimeException;
  */
 class CuStaticService implements CuStaticServiceInterface
 {
+
+    /**
+     * イベント発火用トレイト。
+     *
+     * CuStatic.beforeExport / CuStatic.afterExport を発火し、アドオンプラグインが
+     * 出力ライフサイクルへ割り込めるようにする。ローカルEventManagerだが、
+     * グローバル（EventManager::instance()）に登録されたリスナーも合わせて呼ばれる。
+     *
+     * @use \Cake\Event\EventDispatcherTrait<\CuStatic\Service\CuStaticService>
+     */
+    use EventDispatcherTrait;
 
     /**
      * @var \CuStatic\Model\Table\CuStaticConfigsTable
@@ -95,7 +107,8 @@ class CuStaticService implements CuStaticServiceInterface
         }
 
         $this->CuStaticConfigs->updateStatus($config->id, true);
-        $this->CuStaticConfigs->updateProgress($config->id, 0, 0);
+        $progress = new CuStaticProgressReporter($this->CuStaticConfigs, $config->id);
+        $progress->setTotal(0);
 
         try {
             $exportPath = rtrim($config->export_path, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
@@ -150,18 +163,27 @@ class CuStaticService implements CuStaticServiceInterface
             }
 
             $progressMax = count($jobs);
-            $this->CuStaticConfigs->updateProgress($config->id, 0, $progressMax);
+            $progress->setTotal($progressMax);
             $this->writeLog(sprintf('[export][%s] 出力対象件数=%d', $this->modeLabel, $progressMax));
+
+            // 出力直前フック。アドオンは前処理や進捗の事前予約（$progress->reserve()）に利用できる。
+            $this->dispatchEvent('CuStatic.beforeExport', [
+                'exportPath' => $exportPath,
+                'mode' => $this->modeLabel,
+                'siteIds' => $siteIds,
+                'config' => $config,
+                'progress' => $progress,
+            ]);
 
             // PCNTL 対応チェック
             if ($workers > 1 && function_exists('pcntl_fork')) {
-                $this->exportParallel($jobs, $workers, function (int $done) use ($config, $progressMax) {
-                    $this->CuStaticConfigs->updateProgress($config->id, $done, $progressMax);
+                $this->exportParallel($jobs, $workers, function (int $done) use ($progress) {
+                    $progress->set($done);
                 });
             } else {
                 foreach ($jobs as $i => $job) {
                     $this->exportHtml($job['url'], $job['path'], $job['publish']);
-                    $this->CuStaticConfigs->updateProgress($config->id, $i + 1, $progressMax);
+                    $progress->set($i + 1);
                 }
             }
 
@@ -177,6 +199,17 @@ class CuStaticService implements CuStaticServiceInterface
             }
 
             $this->writeLog(sprintf('[export][%s] 完了（出力 %d 件 / 削除 %d 件）', $this->modeLabel, $progressMax, $deleteCount));
+
+            // 出力完了フック。アドオンは追加ファイルの書き出し等の後処理に利用できる。
+            // $progress->reserve()/advance() で追加処理も進捗バーへ反映できる。
+            // updateStatus(false)（完了フラグ）より前に発火するため、実行中表示が維持される。
+            $this->dispatchEvent('CuStatic.afterExport', [
+                'exportPath' => $exportPath,
+                'mode' => $this->modeLabel,
+                'siteIds' => $siteIds,
+                'config' => $config,
+                'progress' => $progress,
+            ]);
         } catch (\Throwable $e) {
             $this->writeLog(sprintf('[export][%s] エラー: %s', $this->modeLabel, $e->getMessage()));
             $this->CuStaticConfigs->updateStatus($config->id, false);
