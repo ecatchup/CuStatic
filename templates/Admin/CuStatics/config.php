@@ -31,7 +31,7 @@ $targetConfig = json_decode($config->target_config ?? '{}', true) ?? [];
 					'type' => 'text',
 					'size' => 60,
 					'maxlength' => 255,
-					'placeholder' => '/var/www/html/static/',
+					'placeholder' => '/var/www/html/tmp/static/',
 					'label' => false,
 				]) ?>
 				<?= $this->BcAdminForm->error('export_path') ?>
