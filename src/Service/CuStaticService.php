@@ -272,8 +272,13 @@ class CuStaticService implements CuStaticServiceInterface
                 $response = $client->get($url);
                 if ($response->isOk()) {
                     $content = $response->getBody()->getContents();
+                    $extension = pathinfo($path, PATHINFO_EXTENSION);
+                    // RSS にもアップロードファイルURLの乱数クエリ（enclosure 等）が含まれるため正規化する
+                    if (in_array($extension, ['html', 'rss', 'xml'], true)) {
+                        $content = $this->normalizeHtml($content);
+                    }
                     // HTMLファイルのみ内部リンクを書き換え（RSS等はスキップ）
-                    if (pathinfo($path, PATHINFO_EXTENSION) === 'html') {
+                    if ($extension === 'html') {
                         $content = $this->convertHtmlLinks($content, $url);
                         // 生成HTMLのフィルタフック。アドオンは <script>/<link> の注入や
                         // 追加のリンク書き換え等に利用できる。リスナーが文字列を返せば置き換わる。
@@ -310,6 +315,47 @@ class CuStaticService implements CuStaticServiceInterface
 
         // リトライ上限。一時障害で誤った白紙ページを残さないよう空ファイルは作成せず、失敗としてログに残す。
         $this->writeLog(sprintf('[exportHtml][%s] 取得失敗（%d回試行, %s）: %s', $this->modeLabel, $maxAttempts, $lastError, $url));
+    }
+
+    /**
+     * 静的出力向けにHTMLを正規化する
+     *
+     * 動的レンダリング由来の揮発値（毎回変わる乱数・セッショントークン）を取り除き、
+     * 内容が同じなら常に同じバイト列になる（決定論的な）出力にする。
+     * 除去しないと再書き出しのたびに全HTMLが変わり、git/rsync での差分検出が機能しない。
+     *
+     * - アップロードファイルURLの乱数クエリ除去
+     *   （BcUploadHelper::uploadImage がレンダリングごとに '?' . rand() を付与するため）
+     * - ブログコメント投稿フォームの除去
+     *   （CSRF・captcha はセッション前提のため静的サイトでは送信不能。コメント一覧は残る）
+     *
+     * @param string $html
+     * @return string
+     */
+    public function normalizeHtml(string $html): string
+    {
+        if (Configure::read('CuStatic.normalizeUploadQuery') ?? true) {
+            // /files/ 配下のアップロードファイルURLに付いた「数字のみ」のクエリだけを除去する
+            //（意味のあるクエリパラメータ付きURLには影響しない）
+            $html = (string) preg_replace(
+                '#([^"\'\s]*/files/[^"\'?\s]+\.(?:jpe?g|png|gif|webp|svg|bmp|pdf))\?\d+#i',
+                '$1',
+                $html
+            );
+        }
+        if (Configure::read('CuStatic.removeBlogCommentForm') ?? true) {
+            $html = (string) preg_replace(
+                '#<form[^>]*\bid="BlogCommentAddForm".*?</form>#is',
+                '',
+                $html
+            );
+            $html = (string) preg_replace(
+                '#<script[^>]*\bid="BlogCommentsScripts"[^>]*></script>#i',
+                '',
+                $html
+            );
+        }
+        return $html;
     }
 
     /**

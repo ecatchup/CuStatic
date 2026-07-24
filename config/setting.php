@@ -36,6 +36,14 @@ $config = [
         // 実行ロックの有効期限（秒）。実行中(status=1)でも開始からこの秒数を超えると
         // 異常終了で取り残された stale ロックとみなし、次回実行が奪取して再開します。
         'lockTimeout' => 3600,
+        // アップロードファイルURLの乱数クエリ（?123456789）を除去する。
+        // BcUploadHelper がレンダリングごとに '?' . rand() を付与するため、
+        // 除去しないと内容が同じでも毎回HTMLが変わり、git/rsync の差分ノイズになる。
+        'normalizeUploadQuery' => true,
+        // ブログコメントの投稿フォームを静的HTMLから除去する。
+        // CSRFトークン・captcha はセッション前提のため静的サイトでは送信できず、
+        // かつレンダリングごとに値が変わり差分ノイズになる（コメント一覧の表示は残る）。
+        'removeBlogCommentForm' => true,
     ],
     'BcApp' => [
         'adminNavigation' => [

@@ -27,6 +27,12 @@ $customize_config = [
         //     'BcBlog',
         //     'BcFront',
         // ],
+
+        // アップロードファイルURLの乱数クエリ（?123456789）を除去するか
+        // 'normalizeUploadQuery' => true,
+
+        // ブログコメントの投稿フォームを静的HTMLから除去するか（コメント一覧の表示は残る）
+        // 'removeBlogCommentForm' => true,
     ],
 
     // 管理画面メニューのカスタマイズ例

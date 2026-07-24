@@ -11,6 +11,9 @@ CHG: 変更内容 / BUG: バグフィックス / NEW: 機能追加
 - CHG: baserCMS5系対応版
 - NEW: イベント追加（beforeExport / afterExport / filterHtml）
 - NEW: 並列処理（PCNTL）の追加
+- NEW: 出力HTML/RSSの正規化（アップロードファイルURLの乱数クエリ除去・ブログコメントフォーム除去）。
+       内容が同じなら常に同じ出力になり、git/rsync の差分ノイズを防ぐ（setting で無効化可能）
+- NEW: 書き出し画面末尾にアドオン差し込みスロット（BcFormTable->dispatchAfter）を追加
 
 [2024-04-10] CuStatic-1.0.4
 - CHG: 管理側とフロント側でドメインが異なる場合の処理追加（configで設定可能）
