@@ -33,6 +33,11 @@ class CuStaticService implements CuStaticServiceInterface
      * 出力ライフサイクルへ割り込めるようにする。ローカルEventManagerだが、
      * グローバル（EventManager::instance()）に登録されたリスナーも合わせて呼ばれる。
      *
+     * beforeExport のイベントデータ jobs（ArrayObject）へ
+     * ['url' => 取得URL, 'path' => 出力先絶対パス, 'publish' => bool] を追記すると、
+     * 本体パイプライン（HTTP取得・リンク変換・filterHtml・進捗・並列）で書き出される。
+     * URL 組み立て用に baseUrl も渡す。
+     *
      * @use \Cake\Event\EventDispatcherTrait<\CuStatic\Service\CuStaticService>
      */
     use EventDispatcherTrait;
@@ -166,14 +171,27 @@ class CuStaticService implements CuStaticServiceInterface
             $progress->setTotal($progressMax);
             $this->writeLog(sprintf('[export][%s] 出力対象件数=%d', $this->modeLabel, $progressMax));
 
-            // 出力直前フック。アドオンは前処理や進捗の事前予約（$progress->reserve()）に利用できる。
+            // 出力直前フック。アドオンは前処理や進捗の事前予約（$progress->reserve()）のほか、
+            // jobs（ArrayObject）への追記で書き出しジョブを追加できる。
+            // ジョブの形: ['url' => 取得URL, 'path' => 出力先絶対パス, 'publish' => bool]
+            $jobsObject = new \ArrayObject($jobs);
             $this->dispatchEvent('CuStatic.beforeExport', [
                 'exportPath' => $exportPath,
                 'mode' => $this->modeLabel,
                 'siteIds' => $siteIds,
                 'config' => $config,
                 'progress' => $progress,
+                'jobs' => $jobsObject,
+                'baseUrl' => $baseUrl,
             ]);
+            $jobs = array_values($jobsObject->getArrayCopy());
+            if (count($jobs) > $progressMax) {
+                // アドオン追加分は setTotal の上書きではなく reserve（加算）で分母へ反映する
+                // （リスナーが beforeExport 中に自前で reserve した分を消さないため）
+                $this->writeLog(sprintf('[export][%s] アドオン追加ジョブ=%d 件', $this->modeLabel, count($jobs) - $progressMax));
+                $progress->reserve(count($jobs) - $progressMax);
+                $progressMax = count($jobs);
+            }
 
             // PCNTL 対応チェック
             if ($workers > 1 && function_exists('pcntl_fork')) {
