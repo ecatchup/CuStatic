@@ -85,6 +85,13 @@ $this->BcAdmin->setTitle('静的HTML出力');
 
 	<?= $this->BcAdminForm->end() ?>
 
+	<?php
+	// アドオン差し込みスロット（Helper.BcFormTable.after）。
+	// アドオンのリスナーがボタン・結果表示等を追加できる。リスナー不在時は空出力。
+	// メインフォームの外に置くこと（アドオンが自前の form を描画するため）。
+	?>
+	<?= $this->BcFormTable->dispatchAfter() ?>
+
 	<script>
 		(function() {
 			var POLL_INTERVAL = 2000;
