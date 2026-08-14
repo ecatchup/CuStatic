@@ -64,6 +64,26 @@ $targetConfig = json_decode($config->target_config ?? '{}', true) ?? [];
 		</tr>
 		<tr>
 			<th class="bca-form-table__label">
+				<?= $this->BcAdminForm->label('public_url', '公開URL') ?>
+			</th>
+			<td class="col-input bca-form-table__input">
+				<?= $this->BcAdminForm->control('public_url', [
+					'type' => 'text',
+					'size' => 60,
+					'maxlength' => 255,
+					'placeholder' => 'https://www.example.com（静的サイトを配信するURL）',
+					'label' => false,
+				]) ?>
+				<?= $this->BcAdminForm->error('public_url') ?>
+				<i class="bca-icon--question-circle bca-help"></i>
+				<div class="bca-helptext">
+					書き出したHTMLを配信する静的サイト側のURLです。書き出し処理自体には影響しません。<br>
+					アドオン（静的メールフォーム等）が、静的サイトからのアクセスを許可するオリジンの既定値として参照します。
+				</div>
+			</td>
+		</tr>
+		<tr>
+			<th class="bca-form-table__label">
 				<?= $this->BcAdminForm->label('rsync_command', 'rsyncコマンド') ?>
 			</th>
 			<td class="col-input bca-form-table__input">

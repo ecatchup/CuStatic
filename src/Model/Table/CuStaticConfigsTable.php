@@ -56,18 +56,27 @@ class CuStaticConfigsTable extends Table
                 },
             ]);
 
+        // CakePHP 標準の url ルールは http://localhost 等の TLD なしホストを
+        // 不正と判定するため使わない。URL として必要な
+        // 「http(s) スキーム + ホスト」の構造のみを検証する。
+        $validUrl = function ($value) {
+            $parts = parse_url((string)$value);
+            return !empty($parts['scheme'])
+                && in_array(strtolower($parts['scheme']), ['http', 'https'], true)
+                && !empty($parts['host']);
+        };
+
         $validator
             ->allowEmptyString('base_url')
-            // CakePHP 標準の url ルールは http://localhost 等の TLD なしホストを
-            // 不正と判定するため使わない。取得元 URL として必要な
-            // 「http(s) スキーム + ホスト」の構造のみを検証する。
             ->add('base_url', 'validUrl', [
-                'rule' => function ($value) {
-                    $parts = parse_url((string)$value);
-                    return !empty($parts['scheme'])
-                        && in_array(strtolower($parts['scheme']), ['http', 'https'], true)
-                        && !empty($parts['host']);
-                },
+                'rule' => $validUrl,
+                'message' => 'URLの形式が正しくありません。',
+            ]);
+
+        $validator
+            ->allowEmptyString('public_url')
+            ->add('public_url', 'validUrl', [
+                'rule' => $validUrl,
                 'message' => 'URLの形式が正しくありません。',
             ]);
 
