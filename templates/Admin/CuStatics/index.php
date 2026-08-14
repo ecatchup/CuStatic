@@ -22,11 +22,18 @@ $this->BcAdmin->setTitle('静的HTML出力');
 	</div>
 
 	<!-- form -->
+	<?php
+	// 実行ボタン押下直後のリダイレクトかどうか（?exec=1）。
+	// バックグラウンドの CLI が status=1 を立てるまで数秒かかるため、
+	// その間も「起動中…」を即時表示して無反応に見えないようにする。
+	$execPending = (bool)$this->getRequest()->getQuery('exec');
+	?>
 	<?= $this->BcAdminForm->create(null, ['type' => 'post', 'url' => ['action' => 'index']]) ?>
 
-	<div id="cu-static-status" style="<?= $config->status ? '' : 'display:none' ?>">
-		<progress id="cu-static-progress" max="<?= h($config->progress_max) ?>" value="<?= h($config->progress) ?>"></progress>
-		<div id="cu-static-status-message"></div>
+	<div id="cu-static-status" style="<?= ($config->status || $execPending) ? '' : 'display:none' ?>">
+		<?php // value 属性なしの progress は不確定（インジケータ流れ）表示になる。起動待ちの間はこれを使う ?>
+		<progress id="cu-static-progress" max="<?= h($config->progress_max ?: 1) ?>"<?= ($config->status && (int)$config->progress_max > 0) ? ' value="' . h($config->progress) . '"' : '' ?>></progress>
+		<div id="cu-static-status-message"><?= ($execPending && !$config->status) ? '起動中…' : '' ?></div>
 		<dl id="cu-static-times" class="cu-static-times">
 			<div><dt>開始時刻</dt><dd id="cu-static-started">-</dd></div>
 			<div><dt>終了時刻</dt><dd id="cu-static-finished">-</dd></div>
@@ -95,6 +102,7 @@ $this->BcAdmin->setTitle('静的HTML出力');
 	<script>
 		(function() {
 			var POLL_INTERVAL = 2000;
+			var IDLE_INTERVAL = 5000;
 			var statusUrl = '<?= $this->Url->build(['action' => 'get_status']) ?>';
 			var offset = 0;
 			var consoleEl = document.getElementById('cu-static-console');
@@ -110,6 +118,17 @@ $this->BcAdmin->setTitle('静的HTML出力');
 			var baseElapsed = null;
 			var baseAtMs = 0;
 			var running = false;
+
+			// 起動待ち状態（実行ボタン押下直後）。CLI が status=1 を立てるまでの間、
+			// 「起動中…」＋不確定プログレスバーを表示し、ポーリングも実行中間隔で回す。
+			// 起動失敗時に永久に「起動中…」とならないよう 60 秒でタイムアウトする。
+			var pending = <?= $execPending ? 'true' : 'false' ?>;
+			var pendingUntilMs = Date.now() + 60000;
+			var initialFinished = null; // 初回応答の終了時刻。変化したら「起動→即完了」とみなす
+			if (pending && window.history && history.replaceState) {
+				// リロード時に再び「起動中…」と誤表示しないよう ?exec=1 を URL から除去する
+				history.replaceState(null, '', window.location.pathname);
+			}
 
 			// 秒数を「H時間M分S秒」形式へ整形（0の位は省略。0秒台は「0秒」）
 			function formatElapsed(sec) {
@@ -146,17 +165,35 @@ $this->BcAdmin->setTitle('静的HTML出力');
 				var max = Number(data.progress_max);
 				running = !!status;
 
-				// 実行中、または過去実行の記録（開始時刻あり）がある場合に表示する
-				if (statusEl) statusEl.style.display = (status || data.started) ? '' : 'none';
-				// プログレスバーは実行中のみ表示
+				// 起動待ちの解除判定：実行開始を検知したら解除。
+				// 初回応答より終了時刻が変化した場合は「起動→ポーリング間隔内に完了」なので同じく解除。
+				// 起動失敗などで一向に始まらない場合は 60 秒で諦める。
+				if (initialFinished === null) initialFinished = data.finished || '';
+				if (status || (data.finished && data.finished !== initialFinished) || Date.now() > pendingUntilMs) {
+					pending = false;
+				}
+
+				// 実行中・起動待ち、または過去実行の記録（開始時刻あり）がある場合に表示する
+				if (statusEl) statusEl.style.display = (status || pending || data.started) ? '' : 'none';
+				// プログレスバーは実行中と起動待ちのみ表示。
+				// 分母が未確定（起動待ち・初期化中）の間は value を外して不確定表示にする。
 				if (progressEl) {
-					progressEl.style.display = status ? '' : 'none';
-					progressEl.value = progress;
-					progressEl.max = max || 1;
+					progressEl.style.display = (status || pending) ? '' : 'none';
+					if (status && max > 0) {
+						progressEl.max = max;
+						progressEl.value = progress;
+					} else {
+						progressEl.removeAttribute('value');
+						progressEl.max = 1;
+					}
 				}
 				if (msgEl) {
 					if (status) {
-						msgEl.textContent = '処理中 (' + (max > 0 ? Math.round(progress / max * 100) : 0) + ' %)';
+						msgEl.textContent = max > 0
+							? '処理中 (' + Math.round(progress / max * 100) + ' %)'
+							: '処理を開始しています…';
+					} else if (pending) {
+						msgEl.textContent = '起動中…';
 					} else if (max > 0 && progress >= max) {
 						msgEl.textContent = '完了';
 					} else {
@@ -176,20 +213,23 @@ $this->BcAdmin->setTitle('静的HTML出力');
 					if (elapsedEl) elapsedEl.textContent = '-';
 				}
 
-				return status;
+				// 起動待ち中も実行中と同じ短い間隔でポーリングする
+				return status || pending;
 			}
 
-			// 実行中(status=1)のみポーリングを継続。完了(status=0)で停止（差分は当該回で取得済み）。
+			// ポーリングは停止しない。実行ボタン押下後のリダイレクト直後は、バックグラウンドの
+			// コマンドがまだ起動中（status=0）のことがあり、status=1 を条件に停止すると
+			// 実行開始を取り逃がして進捗が一切表示されなくなるため。
+			// 実行中は POLL_INTERVAL、アイドル時は IDLE_INTERVAL に落として負荷を抑える。
 			function poll() {
 				fetch(statusUrl + '?offset=' + offset)
 					.then(function(r) { return r.json(); })
 					.then(function(data) {
-						if (render(data)) {
-							setTimeout(poll, POLL_INTERVAL);
-						}
+						var isRunning = render(data);
+						setTimeout(poll, isRunning ? POLL_INTERVAL : IDLE_INTERVAL);
 					})
 					.catch(function() {
-						setTimeout(poll, POLL_INTERVAL * 2); // エラー時はバックオフして再試行
+						setTimeout(poll, IDLE_INTERVAL * 2); // エラー時はバックオフして再試行
 					});
 			}
 
@@ -256,6 +296,20 @@ $this->BcAdmin->setTitle('静的HTML出力');
 
 		#cu-static-status progress::-moz-progress-bar {
 			background: #6fa83d;
+		}
+
+		/*
+		 * 不確定状態（value 属性なし＝起動中・初期化中）の表示。
+		 * appearance: none のため Chrome では value 部分が全幅（100%の緑）で
+		 * 描画されてしまうので、緑の塗りを消して全体をグレー（0%相当の見た目）にする。
+		 * Firefox は不確定時に ::-moz-progress-bar が全幅になるため同様にグレーへ。
+		 */
+		#cu-static-status progress:indeterminate::-webkit-progress-value {
+			background: #eee;
+		}
+
+		#cu-static-status progress:indeterminate::-moz-progress-bar {
+			background: #eee;
 		}
 	</style>
 

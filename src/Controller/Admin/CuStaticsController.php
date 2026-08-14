@@ -83,7 +83,10 @@ class CuStaticsController extends CuStaticAppController
 
             $label = $mode === 'diff' ? '差分出力' : '静的HTML出力';
             $this->BcMessage->setSuccess($label . 'を開始しました。ログで進捗を確認してください。');
-            return $this->redirect(['action' => 'index']);
+            // exec=1 はリダイレクト先で「起動中…」を即時表示するためのフラグ。
+            // バックグラウンドの CLI が status=1 を立てるまで数秒かかるため、
+            // これが無いと進捗表示が出るまで無反応に見える。
+            return $this->redirect(['action' => 'index', '?' => ['exec' => '1']]);
         }
 
         /** @var CuStaticConfigServiceInterface $configService */
