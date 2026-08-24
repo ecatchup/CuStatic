@@ -81,4 +81,61 @@ class CuStaticUtilTest extends BcTestCase
         }
     }
 
+    /**
+     * CLI の PHP バイナリ（php・バージョン付き php8.5/php85）は CLI と判定する
+     */
+    public function testIsCliPhpBinaryAcceptsCliBinaries(): void
+    {
+        $this->assertTrue(CuStaticUtil::isCliPhpBinary('/usr/bin/php'));
+        $this->assertTrue(CuStaticUtil::isCliPhpBinary('/usr/local/bin/php8.5'));
+        $this->assertTrue(CuStaticUtil::isCliPhpBinary('/opt/remi/php85/root/bin/php'));
+        $this->assertTrue(CuStaticUtil::isCliPhpBinary('/usr/bin/php85'));
+    }
+
+    /**
+     * FPM/CGI/Web サーバ等の SAPI バイナリは CLI と判定しない
+     */
+    public function testIsCliPhpBinaryRejectsNonCliBinaries(): void
+    {
+        $this->assertFalse(CuStaticUtil::isCliPhpBinary(''));
+        $this->assertFalse(CuStaticUtil::isCliPhpBinary('/usr/sbin/php-fpm'));
+        $this->assertFalse(CuStaticUtil::isCliPhpBinary('/opt/remi/php85/root/usr/sbin/php-fpm'));
+        $this->assertFalse(CuStaticUtil::isCliPhpBinary('/usr/bin/php-cgi'));
+        $this->assertFalse(CuStaticUtil::isCliPhpBinary('/usr/sbin/httpd'));
+        $this->assertFalse(CuStaticUtil::isCliPhpBinary('/usr/sbin/apache2'));
+    }
+
+    /**
+     * 設定 CuStatic.phpBinary が指定されていれば最優先で採用される
+     */
+    public function testGetPhpBinaryPrefersConfiguredValue(): void
+    {
+        $original = \Cake\Core\Configure::read('CuStatic.phpBinary');
+        \Cake\Core\Configure::write('CuStatic.phpBinary', '/opt/remi/php85/root/bin/php');
+        try {
+            $this->assertSame('/opt/remi/php85/root/bin/php', CuStaticUtil::getPhpBinary());
+        } finally {
+            \Cake\Core\Configure::write('CuStatic.phpBinary', $original);
+        }
+    }
+
+    /**
+     * 設定未指定でも何らかの非空パスへ解決される（CLI 実行下では PHP_BINARY 自身）
+     */
+    public function testGetPhpBinaryResolvesWithoutConfig(): void
+    {
+        $original = \Cake\Core\Configure::read('CuStatic.phpBinary');
+        \Cake\Core\Configure::write('CuStatic.phpBinary', null);
+        try {
+            $resolved = CuStaticUtil::getPhpBinary();
+            $this->assertNotSame('', $resolved);
+            // テストは CLI（phpunit）で実行されるため、PHP_BINARY がそのまま採用されるはず
+            if (CuStaticUtil::isCliPhpBinary(PHP_BINARY)) {
+                $this->assertSame(PHP_BINARY, $resolved);
+            }
+        } finally {
+            \Cake\Core\Configure::write('CuStatic.phpBinary', $original);
+        }
+    }
+
 }

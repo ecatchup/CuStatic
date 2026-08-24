@@ -25,6 +25,11 @@ $config = [
         ],
         // デフォルト並列ワーカー数
         'defaultWorkers' => 4,
+        // バックグラウンド実行に使う CLI PHP バイナリのパス。
+        // null の場合は自動検出（PHP_BINARY → PHP_BINDIR/php → PATH 上の php）。
+        // PATH 上の php が別バージョン（OS 標準の古い PHP 等）の環境では、
+        // setting_customize.php で明示的に指定する（例: '/opt/remi/php85/root/bin/php'）
+        'phpBinary' => null,
         // HTML取得の最大試行回数（5xx・接続エラー時にリトライ。1でリトライなし）
         'httpMaxAttempts' => 3,
         // ブログ投稿集計時のチャンク件数（大量投稿時のメモリ抑制。1件ずつ全件ロードしない）

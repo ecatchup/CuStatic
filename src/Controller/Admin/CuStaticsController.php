@@ -15,6 +15,7 @@ use Cake\Http\Response;
 use Cake\Log\Log;
 use CuStatic\Service\CuStaticConfigServiceInterface;
 use CuStatic\Service\CuStaticServiceInterface;
+use CuStatic\Utility\CuStaticUtil;
 
 /**
  * CuStaticsController
@@ -61,12 +62,7 @@ class CuStaticsController extends CuStaticAppController
             // バックグラウンドでコマンドを実行
             $workers = Configure::read('CuStatic.defaultWorkers') ?? 4;
             $cakePath = ROOT . DS . 'bin' . DS . 'cake.php';
-
-            // PHP_BINARY は FPM コンテキストでは空または fpm バイナリになるため、CLI PHP を確実に取得する
-            $phpBin = PHP_BINARY;
-            if (empty($phpBin) || stripos($phpBin, 'fpm') !== false) {
-                $phpBin = trim((string)shell_exec('which php 2>/dev/null')) ?: '/usr/local/bin/php';
-            }
+            $phpBin = CuStaticUtil::getPhpBinary();
 
             // コンソール出力は /dev/null へ捨てる。
             // CakePHP はコマンド実行時にログをコンソールへもミラー出力するため、
@@ -79,7 +75,13 @@ class CuStaticsController extends CuStaticAppController
                 escapeshellarg($mode),
                 (int) $workers
             );
-            exec($cmd);
+            // 起動失敗（PHP バイナリの解決ミス等）は /dev/null 行きで痕跡が残らないため、
+            // 実行コマンドを cu_static.log に記録して画面のログ表示から診断できるようにする
+            Log::write('info', '[export] バックグラウンド実行: ' . $cmd, ['scope' => ['cu_static']]);
+            exec($cmd, $execOutput, $execCode);
+            if ($execCode !== 0) {
+                Log::write('error', sprintf('[export] バックグラウンド起動に失敗しました (exit=%d): %s', $execCode, implode("\n", $execOutput)), ['scope' => ['cu_static']]);
+            }
 
             $label = $mode === 'diff' ? '差分出力' : '静的HTML出力';
             $this->BcMessage->setSuccess($label . 'を開始しました。ログで進捗を確認してください。');

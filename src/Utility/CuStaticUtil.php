@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace CuStatic\Utility;
 
+use Cake\Core\Configure;
+
 /**
  * CuStaticUtil
  *
@@ -16,6 +18,64 @@ namespace CuStatic\Utility;
  */
 class CuStaticUtil
 {
+
+    /**
+     * バックグラウンド実行に使う CLI PHP バイナリのパスを解決する
+     *
+     * Web コンテキストの PHP_BINARY は FPM/CGI/Apache モジュールでは CLI ではない
+     * バイナリを指す。また PATH 上の `php` は別バージョン（OS 標準の古い PHP 等）の
+     * ことがあるため、実行中と同じビルドの CLI（PHP_BINDIR/php）を PATH より優先する。
+     *
+     * 解決順:
+     * 1. 設定 `CuStatic.phpBinary`（setting_customize.php で明示指定）
+     * 2. PHP_BINARY（CLI バイナリの場合のみ）
+     * 3. PHP_BINDIR/php（実行中と同一ビルドの CLI。Remi SCL 等のバージョン別配置に対応）
+     * 4. PATH 上の php（バージョン不一致の可能性がある最終手段）
+     * 5. /usr/local/bin/php
+     *
+     * @return string
+     */
+    public static function getPhpBinary(): string
+    {
+        $configured = (string)(Configure::read('CuStatic.phpBinary') ?? '');
+        if (trim($configured) !== '') {
+            return trim($configured);
+        }
+
+        if (self::isCliPhpBinary(PHP_BINARY)) {
+            return PHP_BINARY;
+        }
+
+        $sameBuild = PHP_BINDIR . DIRECTORY_SEPARATOR . 'php';
+        if (is_executable($sameBuild)) {
+            return $sameBuild;
+        }
+
+        // `which` は環境により存在しないため、シェルビルトインの `command -v` を使う
+        $which = trim((string)shell_exec('command -v php 2>/dev/null'));
+        if ($which !== '') {
+            return $which;
+        }
+
+        return '/usr/local/bin/php';
+    }
+
+    /**
+     * パスが CLI の PHP バイナリらしいかを判定する
+     *
+     * `php`・`php8.5`・`php85` 等は CLI とみなし、
+     * `php-fpm`・`php-cgi`・`httpd` 等の SAPI バイナリは除外する。
+     *
+     * @param string $bin 判定対象のバイナリパス
+     * @return bool
+     */
+    public static function isCliPhpBinary(string $bin): bool
+    {
+        if (trim($bin) === '') {
+            return false;
+        }
+        return (bool)preg_match('/^php[0-9.]*$/', basename($bin));
+    }
 
     /**
      * 破壊的削除に対して危険な出力先パスなら理由文字列を、安全なら null を返す

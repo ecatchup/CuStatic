@@ -15,6 +15,10 @@ $customize_config = [
         // CRON による差分出力を有効化するか
         'cronEnabled' => false,
 
+        // バックグラウンド実行に使う CLI PHP バイナリのパス
+        // PATH 上の php が別バージョン（OS 標準の古い PHP 等）のサーバでは明示的に指定する
+        // 'phpBinary' => '/opt/remi/php85/root/bin/php',
+
         // 出力対象のコンテンツ種別
         // 'types' => [
         //     'Page',

@@ -65,6 +65,7 @@ CuStatic は、baserCMS で作成した Web サイト内のページを **静的
 | `CuStatic.httpMaxAttempts` | `3` | HTML取得の最大試行回数（5xx・接続エラー時にリトライ。1でリトライなし） |
 | `CuStatic.chunkSize` | `1000` | ブログ投稿集計時のチャンク件数（大量投稿時のメモリ抑制） |
 | `CuStatic.lockTimeout` | `3600` | 実行ロックの有効期限（秒）。開始からこの秒数を超えた実行中フラグは stale として次回実行が奪取 |
+| `CuStatic.phpBinary` | `null`（自動検出） | バックグラウンド実行に使う CLI PHP バイナリのパス。PATH 上の `php` が別バージョン（OS 標準の古い PHP 等）のサーバでは明示的に指定する（例: `/opt/remi/php85/root/bin/php`） |
 
 ## Thanks
 - [http://basercms.net](http://basercms.net/)
