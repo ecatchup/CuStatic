@@ -39,6 +39,12 @@ class CuStaticService implements CuStaticServiceInterface
      * 本体パイプライン（HTTP取得・リンク変換・filterHtml・進捗・並列）で書き出される。
      * URL 組み立て用に baseUrl も渡す。
      *
+     * beforeExport / afterExport には本体の変更量も渡す:
+     *   jobCount    本体が計画したジョブ件数（アドオン追加分を含まない）
+     *   deleteCount 差分モードで実行した削除件数（全件モードは 0）
+     * 差分モードで両方 0 なら「コンテンツに変更がない実行」であり、
+     * アドオンは毎回の再生成をスキップする判断に使える。
+     *
      * @use \Cake\Event\EventDispatcherTrait<\CuStatic\Service\CuStaticService>
      */
     use EventDispatcherTrait;
@@ -178,6 +184,11 @@ class CuStaticService implements CuStaticServiceInterface
             $progress->setTotal($progressMax);
             $this->writeLog(sprintf('[export][%s] 出力対象件数=%d', $this->modeLabel, $progressMax));
 
+            // 本体が計画したジョブ件数（アドオン追加分を含まない）。
+            // 差分モードで「変更があったかどうか」をアドオンが判定できるよう、
+            // 削除実行件数とともに beforeExport / afterExport へ渡す。
+            $coreJobCount = $progressMax;
+
             // 出力直前フック。アドオンは前処理や進捗の事前予約（$progress->reserve()）のほか、
             // jobs（ArrayObject）への追記で書き出しジョブを追加できる。
             // ジョブの形: ['url' => 取得URL, 'path' => 出力先絶対パス, 'publish' => bool]
@@ -190,6 +201,8 @@ class CuStaticService implements CuStaticServiceInterface
                 'progress' => $progress,
                 'jobs' => $jobsObject,
                 'baseUrl' => $baseUrl,
+                'jobCount' => $coreJobCount,
+                'deleteCount' => $deleteCount,
             ]);
             $jobs = array_values($jobsObject->getArrayCopy());
             if (count($jobs) > $progressMax) {
@@ -234,6 +247,8 @@ class CuStaticService implements CuStaticServiceInterface
                 'siteIds' => $siteIds,
                 'config' => $config,
                 'progress' => $progress,
+                'jobCount' => $coreJobCount,
+                'deleteCount' => $deleteCount,
             ]);
         } catch (\Throwable $e) {
             $this->writeLog(sprintf('[export][%s] エラー: %s', $this->modeLabel, $e->getMessage()));
