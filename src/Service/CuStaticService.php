@@ -149,9 +149,15 @@ class CuStaticService implements CuStaticServiceInterface
 
                 $jobs = $this->buildJobs($siteIds, $targetConfig, $exportPath, $baseUrl);
             } else {
-                // 差分モード: キューから再生成ジョブと削除対象を計画（アセット再コピーはしない）
+                // 差分モード: キューから再生成ジョブと削除対象を計画。
+                // テーマ・プラグインの webroot（CSS/JS 等）はデプロイ時にしか変わらないため
+                // 再コピーしないが、アップロードファイル（アイキャッチ等の webroot/files 配下）は
+                // 運用中に増えるため増分同期する（しないと新規画像が静的サイトへ反映されない）。
                 if (!is_dir($exportPath)) {
                     mkdir($exportPath, 0777, true);
+                }
+                if (Configure::read('CuStatic.diffSyncFiles') ?? true) {
+                    $this->syncUploadFiles($exportPath);
                 }
                 $plan = $this->buildDiffPlan($siteIds, $targetConfig, $exportPath, $baseUrl);
                 $planDeleteCount = count($plan['deletePaths']);
@@ -1405,12 +1411,17 @@ class CuStaticService implements CuStaticServiceInterface
     /**
      * ディレクトリを再帰的にコピーする（rsync または PHP）
      *
+     * PHP コピーは増分方式（コピー先が同一サイズかつ更新日時が新しい場合はスキップ）。
+     * 全件モードは出力先を初期化してから呼ばれるため全ファイルがコピーされ、挙動は変わらない。
+     * 差分モードのアップロードファイル同期（syncUploadFiles）では、この増分判定により
+     * 変更のあったファイルのみがコピーされる。
+     *
      * @param string $src
      * @param string $dst
      * @param string $rsyncCommand rsyncコマンド文字列（空の場合はPHPコピー）
-     * @return void
+     * @return int コピーしたファイル数（rsync 使用時は把握できないため -1）
      */
-    private function copyDirectory(string $src, string $dst, string $rsyncCommand = ''): void
+    private function copyDirectory(string $src, string $dst, string $rsyncCommand = ''): int
     {
         if (!is_dir($dst)) {
             mkdir($dst, 0755, true);
@@ -1422,9 +1433,10 @@ class CuStaticService implements CuStaticServiceInterface
             if ($resultCode !== 0) {
                 $this->writeLog('[copyDirectory] rsyncエラー: ' . implode("\n", $output));
             }
-            return;
+            return -1;
         }
 
+        $copied = 0;
         $iterator = new \RecursiveIteratorIterator(
             new \RecursiveDirectoryIterator($src, \RecursiveDirectoryIterator::SKIP_DOTS),
             \RecursiveIteratorIterator::SELF_FIRST
@@ -1437,8 +1449,52 @@ class CuStaticService implements CuStaticServiceInterface
                     mkdir($target, 0755, true);
                 }
             } else {
-                copy($item->getPathname(), $target);
+                // 増分判定: 同一サイズかつコピー先が新しい（または同時刻）ならスキップ。
+                // copy() はコピー先の mtime を現在時刻にするため、コピー元が後から
+                // 更新（再アップロード）されれば mtime 比較で再コピーされる。
+                if (
+                    is_file($target)
+                    && filesize($target) === $item->getSize()
+                    && filemtime($target) >= $item->getMTime()
+                ) {
+                    continue;
+                }
+                if (copy($item->getPathname(), $target)) {
+                    $copied++;
+                }
             }
+        }
+
+        return $copied;
+    }
+
+    /**
+     * アップロードファイル（webroot/files 配下）を出力先へ同期する
+     *
+     * 差分モード用。テーマ・プラグインの webroot（CSS/JS 等）はデプロイ時にしか
+     * 変わらないため全件モードでのみコピーするが、アップロードファイル
+     * （ブログのアイキャッチ・エディタからのファイル挿入等）は運用中に増えるため、
+     * 差分出力でも同期しないと新規画像が静的サイトに反映されない。
+     *
+     * 削除は行わない（アップロード元から消えたファイルは出力先に残る。
+     * 完全に一致させたい場合は全件出力を実行する）。
+     *
+     * @param string $exportPath 出力先フォルダパス
+     * @return void
+     */
+    private function syncUploadFiles(string $exportPath): void
+    {
+        $baseDir = rtrim(Configure::read('App.www_root') ?? WWW_ROOT, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+        $src = $baseDir . 'files' . DIRECTORY_SEPARATOR;
+        if (!is_dir($src)) {
+            return;
+        }
+        $rsyncCommand = Configure::read('CuStatic.rsyncCommand') ?? '';
+        $copied = $this->copyDirectory($src, $exportPath . 'files' . DIRECTORY_SEPARATOR, $rsyncCommand);
+        if ($copied < 0) {
+            $this->writeLog('[syncUploadFiles] files を同期しました（rsync）');
+        } elseif ($copied > 0) {
+            $this->writeLog(sprintf('[syncUploadFiles] files を同期しました（コピー %d 件）', $copied));
         }
     }
 
