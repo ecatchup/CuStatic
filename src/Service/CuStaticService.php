@@ -14,6 +14,7 @@ use Cake\Event\EventDispatcherTrait;
 use Cake\Http\Client;
 use Cake\Log\Log;
 use Cake\ORM\TableRegistry;
+use CuStatic\Utility\CuStaticUtil;
 use RuntimeException;
 
 /**
@@ -279,7 +280,7 @@ class CuStaticService implements CuStaticServiceInterface
                     }
                     // HTMLファイルのみ内部リンクを書き換え（RSS等はスキップ）
                     if ($extension === 'html') {
-                        $content = $this->convertHtmlLinks($content, $url);
+                        $content = CuStaticUtil::convertHtmlLinks($content, $url);
                         // 生成HTMLのフィルタフック。アドオンは <script>/<link> の注入や
                         // 追加のリンク書き換え等に利用できる。リスナーが文字列を返せば置き換わる。
                         // 並列（fork子）でも発火する（グローバル登録リスナーは fork 前に登録済み）。
@@ -356,127 +357,6 @@ class CuStaticService implements CuStaticServiceInterface
             );
         }
         return $html;
-    }
-
-    /**
-     * HTML内の内部リンク（<a href>）を静的HTML向けに書き換える
-     *
-     * DOMDocument を使うと saveHTML() が日本語を数値文字参照（&#xxxx;）へ変換するため、
-     * href 属性のみを文字列置換で書き換え、本文は一切変更しない。
-     *
-     * @param string $html
-     * @param string $currentUrl 取得元ページのURL（相対リンク・ページネーション解決に使用）
-     * @return string
-     */
-    private function convertHtmlLinks(string $html, string $currentUrl): string
-    {
-        if (trim($html) === '') {
-            return $html;
-        }
-
-        $baseHost = parse_url($currentUrl, PHP_URL_HOST) ?? '';
-        $currentPath = parse_url($currentUrl, PHP_URL_PATH) ?? '/';
-
-        return (string) preg_replace_callback(
-            '/(<a\b[^>]*?\shref\s*=\s*)(["\'])(.*?)\2/i',
-            fn($m) => $m[1] . $m[2] . $this->convertHref($m[3], $baseHost, $currentPath) . $m[2],
-            $html
-        );
-    }
-
-    /**
-     * 単一の href を静的HTML向けパスへ変換する
-     *
-     * 変換対象は同一ホストの内部リンクのみ。外部URL・アンカー・mailto 等はそのまま返す。
-     *   - 末尾 / → /index.html
-     *   - 拡張子なし → .html 付与
-     *   - ページネーション ?page=N（N>=2）→ {パス}/page-N.html（baserCMS5 のクエリ形式に対応）
-     *
-     * @param string $href 元の href
-     * @param string $baseHost 対象ホスト
-     * @param string $currentPath 取得元ページのパス（相対リンク解決の基準）
-     * @return string
-     */
-    private function convertHref(string $href, string $baseHost, string $currentPath): string
-    {
-        $raw = trim($href);
-        if ($raw === '') {
-            return $href;
-        }
-
-        // アンカー・外部スキームはそのまま
-        // 区切り文字は ~ を使用（パターンに含まれるアンカー # をリテラルとして扱うため。# 区切りだと誤認して warning になる）
-        if (preg_match('~^(#|mailto:|tel:|javascript:|ftp:|data:)~i', $raw)) {
-            return $href;
-        }
-
-        // 属性値のエスケープを戻し（&amp; → &）、フラグメントを除去して解析
-        $decoded = explode('#', str_replace('&amp;', '&', $raw), 2)[0];
-        if ($decoded === '') {
-            return $href;
-        }
-
-        $query = '';
-        if (preg_match('#^https?://#i', $decoded) || str_starts_with($decoded, '//')) {
-            // 絶対URL：別ホストはスキップ
-            $p = parse_url($decoded);
-            if (($p['host'] ?? '') !== $baseHost) {
-                return $href;
-            }
-            $path = $p['path'] ?? '/';
-            $query = $p['query'] ?? '';
-        } elseif (str_starts_with($decoded, '?')) {
-            // クエリのみ（ページネーション等）→ 現在ページのパスに対する相対
-            $path = $currentPath;
-            $query = substr($decoded, 1);
-        } else {
-            [$p, $query] = array_pad(explode('?', $decoded, 2), 2, '');
-            if (str_starts_with($p, '/')) {
-                $path = $p; // ルート相対
-            } else {
-                // その他の相対 → 現在パスのディレクトリ基準
-                $path = rtrim(str_replace('\\', '/', dirname($currentPath)), '/') . '/' . $p;
-            }
-        }
-
-        if ($path === '') {
-            $path = '/';
-        }
-
-        // 拡張子付き（CSS/JS/画像等）はそのまま
-        if (pathinfo($path, PATHINFO_EXTENSION) !== '') {
-            return $href;
-        }
-
-        // 末尾スラッシュ → index
-        if (str_ends_with($path, '/')) {
-            $path .= 'index';
-        }
-
-        // 日付アーカイブの月・日をゼロ埋めに正規化する。
-        // baserCMS はウィジェットにより前ゼロ有無が異なる（カレンダー: /date/2026/6・/date/2026/7/2、
-        // 月別/日別アーカイブ: /date/2026/07）。出力ファイルは前ゼロ形式のため、リンク側を揃える。
-        $path = (string) preg_replace_callback(
-            '#(/archives/date)/(\d{4})(?:/(\d{1,2}))?(?:/(\d{1,2}))?$#',
-            function ($mm) {
-                $out = $mm[1] . '/' . $mm[2];
-                if (($mm[3] ?? '') !== '') {
-                    $out .= '/' . str_pad($mm[3], 2, '0', STR_PAD_LEFT);
-                }
-                if (($mm[4] ?? '') !== '') {
-                    $out .= '/' . str_pad($mm[4], 2, '0', STR_PAD_LEFT);
-                }
-                return $out;
-            },
-            $path
-        );
-
-        // ページネーション ?page=N（N>=2）。page=1・クエリなしは一覧本体（index等）
-        if ($query !== '' && preg_match('/(?:^|&)page=(\d+)/', $query, $m) && (int) $m[1] >= 2) {
-            return rtrim($path, '/') . '/page-' . (int) $m[1] . '.html';
-        }
-
-        return $path . '.html';
     }
 
     /**

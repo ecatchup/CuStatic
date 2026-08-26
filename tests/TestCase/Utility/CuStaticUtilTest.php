@@ -82,6 +82,75 @@ class CuStaticUtilTest extends BcTestCase
     }
 
     /**
+     * 内部リンクの href を静的HTML向けパスへ変換する
+     *
+     * （CuStaticService から CuStaticUtil へ移設。期待値は移設前のまま＝挙動不変の証明）
+     *
+     * @dataProvider convertHrefDataProvider
+     */
+    public function testConvertHref(string $href, string $expected): void
+    {
+        $this->assertSame($expected, CuStaticUtil::convertHref($href, 'example.com', '/news/current'));
+    }
+
+    public static function convertHrefDataProvider(): array
+    {
+        return [
+            // アンカー・外部スキームはそのまま
+            'アンカー' => ['#section', '#section'],
+            'mailto' => ['mailto:info@example.com', 'mailto:info@example.com'],
+            // 別ホストの絶対URLはそのまま
+            '別ホスト' => ['https://other.example.net/foo', 'https://other.example.net/foo'],
+            // 同一ホストの絶対URL → 拡張子付与
+            '同一ホスト絶対URL' => ['https://example.com/about', '/about.html'],
+            // 拡張子なしのルート相対 → .html 付与
+            '拡張子なし' => ['/company/access', '/company/access.html'],
+            // 末尾スラッシュ → index.html
+            '末尾スラッシュ' => ['/company/', '/company/index.html'],
+            // 拡張子付き（アセット）はそのまま
+            'アセット' => ['/theme/style.css', '/theme/style.css'],
+            // 相対リンクは現在パスのディレクトリ基準で解決
+            '相対リンク' => ['sub/page', '/news/sub/page.html'],
+            // ページネーション page>=2 → /page-N.html
+            'ページネーション' => ['/news?page=2', '/news/page-2.html'],
+            // page=1 は一覧本体
+            'ページ1' => ['/news?page=1', '/news.html'],
+            // 日付アーカイブの月はゼロ埋めに正規化
+            '日付アーカイブ' => ['/news/archives/date/2026/6', '/news/archives/date/2026/06.html'],
+        ];
+    }
+
+    /**
+     * メールフォームページの症状再現: <a href> の内部リンクが静的URLへ変換される
+     *
+     * CuStaticAddonMailForm が自前生成するフォームページ（/contact/）で、
+     * `/sample` のような拡張子なしリンクが動的URLのまま残る問題の回帰テスト。
+     */
+    public function testConvertHtmlLinksOnMailFormPage(): void
+    {
+        $sourceUrl = 'https://cfadmin.example.com/contact/';
+        $html = '<a href="/sample">サンプル</a>'
+            . '<a href="https://cfadmin.example.com/sample">絶対URL</a>'
+            . '<a href="/contact/">自ページ</a>'
+            . '<a href="https://external.example.net/sample">外部</a>'
+            . '<a href="mailto:info@example.com">メール</a>'
+            . '<form action="/contact/confirm" method="post"></form>';
+
+        $converted = CuStaticUtil::convertHtmlLinks($html, $sourceUrl);
+
+        $this->assertStringContainsString('href="/sample.html"', $converted);
+        // 同一ホストの絶対URLもルート相対の静的URLへ
+        $this->assertStringContainsString('>絶対URL</a>', $converted);
+        $this->assertStringNotContainsString('https://cfadmin.example.com/sample', $converted);
+        $this->assertStringContainsString('href="/contact/index.html"', $converted);
+        // 外部リンク・mailto は不変
+        $this->assertStringContainsString('href="https://external.example.net/sample"', $converted);
+        $this->assertStringContainsString('href="mailto:info@example.com"', $converted);
+        // <a href> 以外（form action 等）は変更しない（JS の /confirm 判定を壊さない）
+        $this->assertStringContainsString('action="/contact/confirm"', $converted);
+    }
+
+    /**
      * CLI の PHP バイナリ（php・バージョン付き php8.5/php85）は CLI と判定する
      */
     public function testIsCliPhpBinaryAcceptsCliBinaries(): void
