@@ -8,6 +8,10 @@
 CHG: 変更内容 / BUG: バグフィックス / NEW: 機能追加
 
 [2026-10-07] CuStatic-2.2.0
+- NEW: 書き出し完了後にコマンドを自動実行する機能を追加（設定 `CuStatic.afterExportCommands`）。
+       CDN キャッシュ削除（Cloudflare 等）やデプロイ（wrangler deploy 等）に利用できる。
+       setting_customize.php でのみ設定可能（管理画面には登録内容を表示）。実行モード・
+       変更なし差分のスキップ・タイムアウト・失敗時停止を指定でき、出力先等を環境変数で渡す
 - BUG: 出力HTML・RSSの絶対URL（canonical・RSSの記事リンク/guid/enclosure・OGP等）に
        管理側（取得元）のドメインが残る問題を修正。オプション設定「公開URL」を設定すると、
        取得元URL（ベースURL・サイトURL）を公開URLへ書き換える

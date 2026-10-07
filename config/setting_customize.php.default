@@ -40,6 +40,31 @@ $customize_config = [
 
         // オプション設定「公開URL」の設定時に、出力HTML・RSS内の取得元（管理側）URLを公開URLへ書き換えるか
         // 'rewritePublicUrl' => true,
+
+        // 書き出し完了後に実行するコマンド（上から順に実行。詳細は docs/advanced.md）
+        // 環境変数 CU_STATIC_EXPORT_PATH / CU_STATIC_MODE / CU_STATIC_JOB_COUNT / CU_STATIC_DELETE_COUNT /
+        // CU_STATIC_PUBLIC_URL / CU_STATIC_BASE_URL が渡される。トークン等はコマンドに直書きせず環境変数（.env 等）で渡すこと。
+        // 'afterExportCommands' => [
+        //     // Cloudflare の CDN キャッシュを全削除する
+        //     [
+        //         'label' => 'Cloudflare キャッシュ削除',
+        //         'command' => 'curl -fsS -X POST "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/purge_cache"'
+        //             . ' -H "Authorization: Bearer $CF_API_TOKEN" -H "Content-Type: application/json"'
+        //             . ' --data \'{"purge_everything":true}\'',
+        //     ],
+        //     // Cloudflare Workers（静的アセット）へデプロイする（全件書き出し時のみ）
+        //     [
+        //         'label' => 'Workers デプロイ',
+        //         'command' => '/usr/local/bin/npx wrangler deploy',
+        //         'cwd' => '/path/to/worker',
+        //         'modes' => ['all'],
+        //         'timeout' => 600,
+        //         'stopOnError' => true,
+        //     ],
+        // ],
+
+        // 書き出し後コマンドの既定タイムアウト（秒）
+        // 'afterExportCommandTimeout' => 300,
     ],
 
     // 管理画面メニューのカスタマイズ例

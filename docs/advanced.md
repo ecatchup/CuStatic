@@ -74,3 +74,74 @@ Docker 環境ではホストの crontab から `docker exec bc-php bin/cake cu_s
 
 - **多重起動防止**: 実行中は DB の実行フラグでロックし、後続の起動は安全にスキップします。異常終了でフラグが残っても、開始から `CuStatic.lockTimeout`（既定 3600 秒）を超えた実行中フラグは stale とみなして次回実行が自動的に奪取します。
 - **終了コード**: 正常終了・実行中スキップは `0`、設定不備や処理エラーは `1` を返します。cron 連打（間隔内に前回が終わらない）でも二重実行されず終了コード `0` で安全終了するため、監視は終了コード `1` を異常として扱えます。
+
+## 書き出し後コマンド
+
+書き出しの完了後に、任意のコマンドを自動実行できます。CDN キャッシュの削除（Cloudflare 等）や、静的ホスティングへのデプロイ（`wrangler deploy` 等）に使います。全件書き出し・差分書き出しのいずれも、管理画面・CLI・cron のどこから実行しても同じように動作します。
+
+### 設定
+
+コマンドは `config/setting_customize.php` の `CuStatic.afterExportCommands` で設定します。**管理画面からは登録・変更できません**（管理画面から任意のシェルコマンドを実行できる経路を作らないため）。登録済みのコマンドは「静的HTML出力」画面に一覧表示されます。
+
+```php
+'CuStatic' => [
+    'afterExportCommands' => [
+        // 文字列だけでも指定できる（既定値で実行）
+        'echo "done: $CU_STATIC_MODE"',
+
+        // 配列で詳細を指定する
+        [
+            'label' => 'Cloudflare キャッシュ削除',   // 画面・ログの表示名（省略時はトークン等をマスクしたコマンド）
+            'command' => 'curl -fsS -X POST "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/purge_cache"'
+                . ' -H "Authorization: Bearer $CF_API_TOKEN" -H "Content-Type: application/json"'
+                . ' --data \'{"purge_everything":true}\'',
+        ],
+        [
+            'label' => 'Workers デプロイ',
+            'command' => '/usr/local/bin/npx wrangler deploy',
+            'cwd' => '/path/to/worker',   // 作業ディレクトリ（省略時は出力先）
+            'modes' => ['all'],           // 実行するモード（all=全件 / diff=差分。省略時は両方）
+            'timeout' => 600,             // タイムアウト秒（省略時は afterExportCommandTimeout = 300）
+            'stopOnError' => true,        // 失敗したら後続のコマンドを実行しない（既定 false）
+            'env' => ['NODE_ENV' => 'production'], // 追加の環境変数
+        ],
+    ],
+],
+```
+
+| オプション | 既定値 | 説明 |
+|------|--------|------|
+| `command` | （必須） | 実行するコマンド。シェル経由で実行します |
+| `label` | マスクしたコマンド | 画面・ログに表示する名前 |
+| `cwd` | 出力先フォルダ | 作業ディレクトリ |
+| `modes` | `['all', 'diff']` | 実行するモード（`main` は `all` の別名） |
+| `skipIfNoChange` | `true` | 差分書き出しで出力・削除が 0 件のときは実行しない（cron の毎分実行で毎回キャッシュを消さないため） |
+| `timeout` | `300` | タイムアウト（秒）。超えるとコマンドとその子プロセスを停止します |
+| `stopOnError` | `false` | 失敗（終了コード 0 以外・タイムアウト）時に後続のコマンドを実行しない |
+| `env` | `[]` | 追加の環境変数 |
+
+### コマンドに渡される環境変数
+
+親プロセスの環境変数（`.env` で設定した値を含む）に加えて、次の値が渡されます。
+
+| 環境変数 | 内容 |
+|------|------|
+| `CU_STATIC_EXPORT_PATH` | 出力先フォルダ（末尾の `/` なし） |
+| `CU_STATIC_MODE` | `all`（全件）または `diff`（差分） |
+| `CU_STATIC_JOB_COUNT` | 書き出したページ数（アドオンが追加した分を除く） |
+| `CU_STATIC_DELETE_COUNT` | 差分書き出しで削除したファイル数（全件は 0） |
+| `CU_STATIC_PUBLIC_URL` | オプション設定の「公開URL」 |
+| `CU_STATIC_BASE_URL` | 書き出しに使った取得元のベースURL |
+
+### 実行順と結果
+
+- `CuStatic.afterExport` イベント（GitDeploy アドオンの自動デプロイ等）の後に、上から順に実行します。
+- 実行中は進捗バーに反映され、すべてのコマンドが終わるまで「実行中」のままになります。
+- 標準出力・標準エラー・終了コード・所要時間は `logs/cu_static.log` に記録されます（画面の「最新ログ表示」で確認できます）。
+- コマンドが失敗しても、書き出し自体は成功として扱います。
+
+### 注意
+
+- **トークン等の秘密情報はコマンドに直書きせず、環境変数で渡してください**（`.env` に `export CF_API_TOKEN="..."` を追加し、コマンドでは `$CF_API_TOKEN` と書く）。直書きした場合も、画面とログでは `Bearer`・`token=` 等に続く値をマスクしますが、設定ファイルには残ります。
+- 管理画面の「静的HTML出力」ボタンからの実行では、Web サーバーの実行ユーザー・環境変数（`PATH` 等）でコマンドが動きます。`npx` 等は絶対パスで指定するか、`env` で `PATH` を指定してください。
+- Cloudflare のキャッシュ削除 API は、URL を指定する方法（`files`）にも対応していますが、現時点では全削除（`purge_everything`）の例のみを案内しています。

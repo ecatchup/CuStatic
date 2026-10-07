@@ -73,6 +73,8 @@ CuStatic は、baserCMS で作成した Web サイト内のページを **静的
 | `CuStatic.chunkSize` | `1000` | ブログ投稿集計時のチャンク件数（大量投稿時のメモリ抑制） |
 | `CuStatic.lockTimeout` | `3600` | 実行ロックの有効期限（秒）。開始からこの秒数を超えた実行中フラグは stale として次回実行が奪取 |
 | `CuStatic.rewritePublicUrl` | `true` | 公開URL設定時に、出力内容の取得元URLを公開URLへ書き換えるか |
+| `CuStatic.afterExportCommands` | `[]` | 書き出し完了後に実行するコマンド（CDN キャッシュ削除・デプロイ等）。詳細は [応用機能](docs/advanced.md#書き出し後コマンド) |
+| `CuStatic.afterExportCommandTimeout` | `300` | 書き出し後コマンドの既定タイムアウト（秒） |
 | `CuStatic.phpBinary` | `null`（自動検出） | バックグラウンド実行に使う CLI PHP バイナリのパス。PATH 上の `php` が別バージョン（OS 標準の古い PHP 等）のサーバでは明示的に指定する（例: `/opt/remi/php85/root/bin/php`） |
 
 ## Thanks

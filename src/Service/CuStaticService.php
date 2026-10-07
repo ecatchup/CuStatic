@@ -91,6 +91,13 @@ class CuStaticService implements CuStaticServiceInterface
     protected string $rewriteToUrl = '';
 
     /**
+     * 書き出し後コマンドの実行クラス（テストで差し替え可能）
+     *
+     * @var CuStaticCommandRunner|null
+     */
+    protected ?CuStaticCommandRunner $commandRunner = null;
+
+    /**
      * Constructor
      */
     public function __construct()
@@ -265,6 +272,17 @@ class CuStaticService implements CuStaticServiceInterface
                 'jobCount' => $coreJobCount,
                 'deleteCount' => $deleteCount,
             ]);
+
+            // 書き出し後コマンド（CDN キャッシュ削除・デプロイ等）。アドオンの afterExport 処理
+            // （git デプロイ等）の完了後に実行する。失敗しても書き出し自体は成功扱いとする。
+            $this->runAfterExportCommands([
+                'exportPath' => $exportPath,
+                'mode' => $this->modeLabel,
+                'jobCount' => $coreJobCount,
+                'deleteCount' => $deleteCount,
+                'publicUrl' => rtrim((string) ($config->public_url ?? ''), '/'),
+                'baseUrl' => $baseUrl,
+            ], $progress);
         } catch (\Throwable $e) {
             $this->writeLog(sprintf('[export][%s] エラー: %s', $this->modeLabel, $e->getMessage()));
             $this->CuStaticConfigs->updateStatus($config->id, false);
@@ -273,6 +291,36 @@ class CuStaticService implements CuStaticServiceInterface
 
         $this->CuStaticConfigs->updateStatus($config->id, false);
         return true;
+    }
+
+    /**
+     * 書き出し後コマンドの実行クラスを設定する
+     *
+     * @param CuStaticCommandRunner $runner
+     * @return void
+     */
+    public function setCommandRunner(CuStaticCommandRunner $runner): void
+    {
+        $this->commandRunner = $runner;
+    }
+
+    /**
+     * 設定 `CuStatic.afterExportCommands` のコマンドを実行する
+     *
+     * コマンドの失敗・例外はログに記録するのみで、書き出し処理へは伝播させない。
+     *
+     * @param array $context exportPath / mode / jobCount / deleteCount / publicUrl / baseUrl
+     * @param CuStaticProgressReporter|null $progress
+     * @return void
+     */
+    protected function runAfterExportCommands(array $context, ?CuStaticProgressReporter $progress = null): void
+    {
+        try {
+            $this->commandRunner ??= new CuStaticCommandRunner();
+            $this->commandRunner->runAll($context, $progress);
+        } catch (\Throwable $e) {
+            $this->writeLog(sprintf('[afterExportCommand] エラー: %s', $e->getMessage()));
+        }
     }
 
     /**

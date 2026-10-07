@@ -76,6 +76,36 @@ $this->BcAdmin->setTitle('静的HTML出力');
 		</div>
 	</div>
 
+	<?php
+	// 書き出し後コマンド（setting_customize.php の CuStatic.afterExportCommands）。
+	// 管理画面からは登録・変更できないため、登録内容を読み取り専用で表示する。
+	$afterExportCommands = \CuStatic\Service\CuStaticCommandRunner::getCommands();
+	?>
+	<?php if ($afterExportCommands): ?>
+	<div class="section" id="cu-static-after-export-commands">
+		<h2 class="bca-main__heading" data-bca-heading-size="lg">書き出し後コマンド</h2>
+		<table class="list-table bca-table-listup">
+			<thead class="bca-table-listup__thead">
+				<tr>
+					<th class="bca-table-listup__thead-th">コマンド</th>
+					<th class="bca-table-listup__thead-th">実行モード</th>
+					<th class="bca-table-listup__thead-th">変更なしの差分</th>
+				</tr>
+			</thead>
+			<tbody class="bca-table-listup__tbody">
+				<?php foreach ($afterExportCommands as $command): ?>
+				<tr>
+					<td class="bca-table-listup__tbody-td"><code><?= h($command['label']) ?></code></td>
+					<td class="bca-table-listup__tbody-td"><?= h(implode(' / ', array_map(fn($m) => $m === 'diff' ? '差分' : '全件', $command['modes']))) ?></td>
+					<td class="bca-table-listup__tbody-td"><?= $command['skipIfNoChange'] ? 'スキップ' : '実行' ?></td>
+				</tr>
+				<?php endforeach; ?>
+			</tbody>
+		</table>
+		<p class="bca-main__text">書き出し完了後に上から順に実行します。実行結果は最新ログで確認できます。登録・変更は <code>config/setting_customize.php</code> の <code>CuStatic.afterExportCommands</code> で行います。</p>
+	</div>
+	<?php endif; ?>
+
 	<div class="section" id="cu-static-log">
 		<div class="bca-collapse__action">
 			<button type="button" class="bca-collapse__btn" data-bca-collapse="collapse" data-bca-target="#cu-static-log-body" aria-expanded="false" aria-controls="cu-static-log-body">
