@@ -77,8 +77,9 @@ $targetConfig = json_decode($config->target_config ?? '{}', true) ?? [];
 				<?= $this->BcAdminForm->error('public_url') ?>
 				<i class="bca-icon--question-circle bca-help"></i>
 				<div class="bca-helptext">
-					書き出したHTMLを配信する静的サイト側のURLです。書き出し処理自体には影響しません。<br>
-					アドオン（静的メールフォーム等）が、静的サイトからのアクセスを許可するオリジンの既定値として参照します。
+					書き出したHTMLを配信する静的サイト側のURLです。<br>
+					設定すると、出力HTML・RSS内の管理側（取得元）の絶対URL（canonical・RSSの記事リンク等）をこのURLに書き換えます。<br>
+					アドオン（静的メールフォーム等）が、静的サイトからのアクセスを許可するオリジンの既定値としても参照します。
 				</div>
 			</td>
 		</tr>

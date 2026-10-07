@@ -202,6 +202,171 @@ class CuStaticUtil
     }
 
     /**
+     * HTML の head 内で絶対URLを持つ参照（canonical・og:url）を静的HTML向けURLへ書き換える
+     *
+     * canonical はフルURL（取得元ホスト）で出力されるため convertHtmlLinks() の対象外であり、
+     * 拡張子なし（/about 等）のまま残ると静的サイト上では存在しないURLを指してしまう。
+     * 内部リンクと同じく .html 付きのURLへ揃える（ホスト部分は保持する）。
+     *
+     * @param string $html
+     * @param string $currentUrl 取得元ページのURL
+     * @return string
+     */
+    public static function convertHeadUrls(string $html, string $currentUrl): string
+    {
+        if (trim($html) === '') {
+            return $html;
+        }
+        $baseHost = parse_url($currentUrl, PHP_URL_HOST) ?? '';
+
+        // <link rel="canonical" href="..."> / <meta property="og:url" content="...">（属性順は問わない）
+        return (string) preg_replace_callback(
+            '/<(?:link\b[^>]*\brel\s*=\s*(["\'])canonical\1|meta\b[^>]*\bproperty\s*=\s*(["\'])og:url\2)[^>]*>/i',
+            function ($m) use ($baseHost) {
+                return (string) preg_replace_callback(
+                    '/(\s(?:href|content)\s*=\s*)(["\'])(.*?)\2/i',
+                    fn($a) => $a[1] . $a[2] . self::toStaticAbsoluteUrl($a[3], $baseHost) . $a[2],
+                    $m[0]
+                );
+            },
+            $html
+        );
+    }
+
+    /**
+     * RSS/XML フィード内の <link>・<guid> の記事URLを静的HTML向けURLへ書き換える
+     *
+     * フィードの記事URLは拡張子なし（/news/archives/1 等）で出力されるため、
+     * 静的サイト上で存在する .html 付きのURLへ変換する。フィードでは絶対URLが必須のため
+     * ホスト部分は保持する（enclosure 等の拡張子付きURLは変換しない）。
+     *
+     * @param string $xml
+     * @param string $currentUrl 取得元フィードのURL
+     * @return string
+     */
+    public static function convertFeedLinks(string $xml, string $currentUrl): string
+    {
+        if (trim($xml) === '') {
+            return $xml;
+        }
+        $baseHost = parse_url($currentUrl, PHP_URL_HOST) ?? '';
+
+        return (string) preg_replace_callback(
+            '#(<(link|guid)\b[^>]*>)\s*([^<]*?)\s*(</\2>)#i',
+            fn($m) => $m[1] . self::toStaticAbsoluteUrl($m[3], $baseHost) . $m[4],
+            $xml
+        );
+    }
+
+    /**
+     * 同一ホストの絶対URLを、ホストを保ったまま静的HTML向けURLへ変換する
+     *
+     * 末尾スラッシュのURL（ディレクトリ）は静的サイトでもそのまま解決できるため変換しない。
+     * 別ホスト・相対URL・拡張子付きURLはそのまま返す。
+     *
+     * @param string $url
+     * @param string $baseHost 取得元ホスト
+     * @return string
+     */
+    public static function toStaticAbsoluteUrl(string $url, string $baseHost): string
+    {
+        $decoded = str_replace('&amp;', '&', trim($url));
+        if (!preg_match('#^(https?:)?//#i', $decoded)) {
+            return $url;
+        }
+        $p = parse_url($decoded);
+        if ($p === false || ($p['host'] ?? '') !== $baseHost) {
+            return $url;
+        }
+        $path = $p['path'] ?? '/';
+        if ($path === '' || str_ends_with($path, '/') && empty($p['query'])) {
+            return $url;
+        }
+
+        $converted = self::convertHref($url, $baseHost, '/');
+        if ($converted === $url) {
+            return $url;
+        }
+        $origin = (isset($p['scheme']) ? $p['scheme'] . ':' : '') . '//' . $p['host']
+            . (isset($p['port']) ? ':' . $p['port'] : '');
+        return $origin . $converted;
+    }
+
+    /**
+     * 出力内容に含まれる取得元のURL（オリジン＋ベースパス）を公開URLへ置き換える
+     *
+     * canonical・RSS・OGP・JSON-LD 等のフルURLは取得元（管理側）のホストで生成されるため、
+     * 静的サイトの公開URLへ書き換える。次の表記に対応する。
+     *   - https://host / http://host（スキームの違いは問わない）
+     *   - //host（プロトコル相対。置換後もプロトコル相対のまま）
+     *   - https:\/\/host（JSON エスケープ形式）
+     * ホストの直後が区切り文字（/ ? # 引用符 < > 空白 \ 等）または末尾の場合のみ置換し、
+     * host.example.com.evil や host:8080 等の別オリジンを誤って置換しない。
+     *
+     * @param string $content
+     * @param array<int, string> $fromUrls 置換元URL（取得元ベースURL・サイトURL等）
+     * @param string $toUrl 置換先（公開URL）
+     * @return string
+     */
+    public static function replaceOrigins(string $content, array $fromUrls, string $toUrl): string
+    {
+        $to = self::splitUrl($toUrl);
+        if ($content === '' || $to === null) {
+            return $content;
+        }
+
+        $targets = [];
+        foreach ($fromUrls as $fromUrl) {
+            $from = self::splitUrl((string) $fromUrl);
+            if ($from === null || strcasecmp($from['authority'], $to['authority']) === 0) {
+                continue;
+            }
+            $targets[strtolower($from['authority'])] = $from['authority'];
+        }
+        if (!$targets) {
+            return $content;
+        }
+        // パス付き（サブディレクトリ設置）を優先して置換するため長い順に並べる
+        uksort($targets, fn($a, $b) => strlen($b) <=> strlen($a));
+
+        foreach ($targets as $authority) {
+            $content = (string) preg_replace_callback(
+                '~(?:(https?:)|(?<![:\w\\\\/]))(//|\\\\/\\\\/)' . preg_quote($authority, '~')
+                    . '(?=[/?#"\'<>\s\\\\),;&]|$)~i',
+                function ($m) use ($to) {
+                    $replacement = ($m[1] !== '' ? $to['scheme'] . ':' : '') . '//' . $to['authority'];
+                    // JSON エスケープ形式（\/\/）はスラッシュを同じ形式へ揃える
+                    return $m[2] === '//' ? $replacement : str_replace('/', '\\/', $replacement);
+                },
+                $content
+            );
+        }
+        return $content;
+    }
+
+    /**
+     * URL をスキームと「ホスト[:ポート][/パス]」（末尾スラッシュなし）に分解する
+     *
+     * @param string $url
+     * @return array{scheme:string, authority:string}|null 解析できない場合は null
+     */
+    private static function splitUrl(string $url): ?array
+    {
+        $url = trim($url);
+        if ($url === '' || !preg_match('#^https?://#i', $url)) {
+            return null;
+        }
+        $p = parse_url($url);
+        if ($p === false || empty($p['host'])) {
+            return null;
+        }
+        return [
+            'scheme' => strtolower($p['scheme']),
+            'authority' => $p['host'] . (isset($p['port']) ? ':' . $p['port'] : '') . rtrim($p['path'] ?? '', '/'),
+        ];
+    }
+
+    /**
      * 破壊的削除に対して危険な出力先パスなら理由文字列を、安全なら null を返す
      *
      * 全件モードは出力先を丸ごと削除するため、設定ミスでアプリ本体・webroot・config 等や

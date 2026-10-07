@@ -29,6 +29,7 @@ CuStatic は、baserCMS で作成した Web サイト内のページを **静的
 |------|------|
 | 出力先（必須） | HTML の書き出し先フォルダの絶対パス。**全件出力時は出力先フォルダ内を一旦削除してから出力**します。 |
 | ベースURL | HTML 取得元のベースURL。空の場合はサイト設定（`BcEnv`）の URL を使用します。 |
+| 公開URL | 静的サイトを配信するURL（例: `https://www.example.com`）。設定すると、出力 HTML・RSS 内の取得元（管理側）の絶対URL（canonical・RSS の記事リンク・OGP 等）を公開URLへ書き換えます。アドオン（静的メールフォーム等）の許可オリジンの既定値にもなります。 |
 | rsyncコマンド | アセットコピーに使う rsync コマンド。空の場合は PHP でのファイルコピーを行います。 |
 | 出力対象 | サイト × コンテンツ種別（フォルダ／固定ページ／ブログの各種一覧・詳細）のチェックボックス。 |
 
@@ -44,6 +45,12 @@ CuStatic は、baserCMS で作成した Web サイト内のページを **静的
 - 固定ページ / フォルダ（インデックス）
 - ブログ: 記事一覧（＋ページネーション）・RSS・カテゴリ別・タグ別・日付別（年／月／日）・著者別・記事詳細
 - 静的アセット: `webroot` 直下の `css/js/img/files`、および対象サイトのテーマ・プラグインの `webroot`（URL `/{アンダースコア名}/` に対応。例: テーマ `BcThemeSample` → `bc_theme_sample/`）
+
+### 出力時のURL変換
+
+- 内部リンク（`<a href>`）は静的ファイルのパス（`/about` → `/about.html`、`/news/` → `/news/index.html`）へ変換します。
+- canonical・`og:url`・RSS の `<link>` / `<guid>` の記事URLは、絶対URLのまま `.html` 付きのURLへ変換します（末尾 `/` のURLはそのまま）。
+- 「公開URL」を設定すると、取得元のURL（ベースURL・サイトURL）を公開URLへ置き換えます。`https://` / `http://`・プロトコル相対（`//host`）・JSON エスケープ（`https:\/\/host`）の表記に対応します。
 
 ※ 動的なコンテンツ（メールフォーム、サイト内検索など）には非対応です。
 必要な場合は外部サービスで対応してください。
@@ -65,6 +72,7 @@ CuStatic は、baserCMS で作成した Web サイト内のページを **静的
 | `CuStatic.httpMaxAttempts` | `3` | HTML取得の最大試行回数（5xx・接続エラー時にリトライ。1でリトライなし） |
 | `CuStatic.chunkSize` | `1000` | ブログ投稿集計時のチャンク件数（大量投稿時のメモリ抑制） |
 | `CuStatic.lockTimeout` | `3600` | 実行ロックの有効期限（秒）。開始からこの秒数を超えた実行中フラグは stale として次回実行が奪取 |
+| `CuStatic.rewritePublicUrl` | `true` | 公開URL設定時に、出力内容の取得元URLを公開URLへ書き換えるか |
 | `CuStatic.phpBinary` | `null`（自動検出） | バックグラウンド実行に使う CLI PHP バイナリのパス。PATH 上の `php` が別バージョン（OS 標準の古い PHP 等）のサーバでは明示的に指定する（例: `/opt/remi/php85/root/bin/php`） |
 
 ## Thanks

@@ -207,4 +207,96 @@ class CuStaticUtilTest extends BcTestCase
         }
     }
 
+    /**
+     * 取得元URLを公開URLへ置き換える（スキーム違い・プロトコル相対・JSON エスケープ）
+     */
+    public function testReplaceOrigins(): void
+    {
+        $from = ['https://admin.example.com'];
+        $to = 'https://www.example.com';
+
+        $html = '<link href="https://admin.example.com/news/" rel="canonical">'
+            . '<img src="http://admin.example.com/files/a.jpg">'
+            . '<img src="//admin.example.com/files/b.jpg">'
+            . '<script type="application/ld+json">{"url":"https:\/\/admin.example.com\/about"}</script>'
+            . '<a href="https://admin.example.com">top</a>'
+            . "<p>https://admin.example.com</p>";
+        $expected = '<link href="https://www.example.com/news/" rel="canonical">'
+            . '<img src="https://www.example.com/files/a.jpg">'
+            . '<img src="//www.example.com/files/b.jpg">'
+            . '<script type="application/ld+json">{"url":"https:\/\/www.example.com\/about"}</script>'
+            . '<a href="https://www.example.com">top</a>'
+            . "<p>https://www.example.com</p>";
+        $this->assertSame($expected, CuStaticUtil::replaceOrigins($html, $from, $to));
+    }
+
+    /**
+     * ホスト名の境界を判定し、別オリジン（サブドメイン延長・別ポート・パス中の文字列）は置き換えない
+     */
+    public function testReplaceOriginsKeepsOtherOrigins(): void
+    {
+        $from = ['https://admin.example.com'];
+        $to = 'https://www.example.com';
+        $html = '<a href="https://admin.example.com.evil.test/">x</a>'
+            . '<a href="https://admin.example.com:8080/">y</a>'
+            . '<a href="https://sub.admin.example.com/">z</a>'
+            . '<a href="https://other.test/?u=admin.example.com/">w</a>';
+        $this->assertSame($html, CuStaticUtil::replaceOrigins($html, $from, $to));
+    }
+
+    /**
+     * ポート付き・サブディレクトリ付きの取得元、公開URL未設定・同一URLの扱い
+     */
+    public function testReplaceOriginsWithPortAndPath(): void
+    {
+        $this->assertSame(
+            '<a href="https://www.example.com/news/">x</a>',
+            CuStaticUtil::replaceOrigins('<a href="http://localhost:8080/news/">x</a>', ['http://localhost:8080'], 'https://www.example.com/')
+        );
+        // サブディレクトリ設置の取得元は、パスごと公開URLへ置き換える（パスの前方一致だけでは置き換えない）
+        $this->assertSame(
+            '<a href="https://www.example.com/news/">x</a><a href="https://admin.test/cmsx/">y</a>',
+            CuStaticUtil::replaceOrigins('<a href="https://admin.test/cms/news/">x</a><a href="https://admin.test/cmsx/">y</a>', ['https://admin.test/cms'], 'https://www.example.com')
+        );
+        $html = '<a href="https://admin.test/">x</a>';
+        $this->assertSame($html, CuStaticUtil::replaceOrigins($html, ['https://admin.test'], ''));
+        $this->assertSame($html, CuStaticUtil::replaceOrigins($html, ['https://admin.test/'], 'https://admin.test'));
+    }
+
+    /**
+     * canonical・og:url の拡張子なしURLを .html 付きへ変換する（ホストは保持）
+     */
+    public function testConvertHeadUrls(): void
+    {
+        $url = 'https://admin.example.com/about';
+        $html = '<link href="https://admin.example.com/about" rel="canonical">'
+            . '<link rel="canonical" href="https://admin.example.com/news/">'
+            . '<meta property="og:url" content="https://admin.example.com/news/archives/2">'
+            . '<link rel="stylesheet" href="https://admin.example.com/css/style">';
+        $expected = '<link href="https://admin.example.com/about.html" rel="canonical">'
+            . '<link rel="canonical" href="https://admin.example.com/news/">'
+            . '<meta property="og:url" content="https://admin.example.com/news/archives/2.html">'
+            . '<link rel="stylesheet" href="https://admin.example.com/css/style">';
+        $this->assertSame($expected, CuStaticUtil::convertHeadUrls($html, $url));
+    }
+
+    /**
+     * RSS の <link>・<guid> の記事URLを .html 付きへ変換する（enclosure・別ホスト・ディレクトリURLは不変）
+     */
+    public function testConvertFeedLinks(): void
+    {
+        $url = 'https://admin.example.com/news/index.rss';
+        $xml = '<rss><channel><link>https://admin.example.com/</link>'
+            . '<item><link>https://admin.example.com/news/archives/2</link>'
+            . '<guid>https://admin.example.com/news/archives/2</guid>'
+            . '<enclosure url="https://admin.example.com/files/a.jpg" type="" length=""/></item>'
+            . '<item><link>https://other.test/page</link></item></channel></rss>';
+        $expected = '<rss><channel><link>https://admin.example.com/</link>'
+            . '<item><link>https://admin.example.com/news/archives/2.html</link>'
+            . '<guid>https://admin.example.com/news/archives/2.html</guid>'
+            . '<enclosure url="https://admin.example.com/files/a.jpg" type="" length=""/></item>'
+            . '<item><link>https://other.test/page</link></item></channel></rss>';
+        $this->assertSame($expected, CuStaticUtil::convertFeedLinks($xml, $url));
+    }
+
 }

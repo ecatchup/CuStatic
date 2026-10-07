@@ -37,6 +37,9 @@ $customize_config = [
 
         // ブログコメントの投稿フォームを静的HTMLから除去するか（コメント一覧の表示は残る）
         // 'removeBlogCommentForm' => true,
+
+        // オプション設定「公開URL」の設定時に、出力HTML・RSS内の取得元（管理側）URLを公開URLへ書き換えるか
+        // 'rewritePublicUrl' => true,
     ],
 
     // 管理画面メニューのカスタマイズ例

@@ -77,6 +77,20 @@ class CuStaticService implements CuStaticServiceInterface
     protected string $modeLabel = 'all';
 
     /**
+     * 出力内容から公開URLへ置き換える取得元URLの一覧。fork 前に設定し子プロセスへ引き継ぐ。
+     *
+     * @var array<int, string>
+     */
+    protected array $rewriteFromUrls = [];
+
+    /**
+     * 置き換え先の公開URL（空なら置き換えない）
+     *
+     * @var string
+     */
+    protected string $rewriteToUrl = '';
+
+    /**
      * Constructor
      */
     public function __construct()
@@ -127,6 +141,7 @@ class CuStaticService implements CuStaticServiceInterface
             $baseUrl = $this->getBaseUrl($config->base_url);
             $targetConfig = json_decode($config->target_config ?? '{}', true) ?? [];
             $workers = (int) $options['workers'];
+            $this->configureUrlRewrite($baseUrl, (string) ($config->public_url ?? ''));
 
             // ログ用モードラベル（全件 / 差分）。exportHtml など子プロセスのログにも付与する。
             $this->modeLabel = $options['all'] ? 'all' : 'diff';
@@ -293,27 +308,7 @@ class CuStaticService implements CuStaticServiceInterface
             try {
                 $response = $client->get($url);
                 if ($response->isOk()) {
-                    $content = $response->getBody()->getContents();
-                    $extension = pathinfo($path, PATHINFO_EXTENSION);
-                    // RSS にもアップロードファイルURLの乱数クエリ（enclosure 等）が含まれるため正規化する
-                    if (in_array($extension, ['html', 'rss', 'xml'], true)) {
-                        $content = $this->normalizeHtml($content);
-                    }
-                    // HTMLファイルのみ内部リンクを書き換え（RSS等はスキップ）
-                    if ($extension === 'html') {
-                        $content = CuStaticUtil::convertHtmlLinks($content, $url);
-                        // 生成HTMLのフィルタフック。アドオンは <script>/<link> の注入や
-                        // 追加のリンク書き換え等に利用できる。リスナーが文字列を返せば置き換わる。
-                        // 並列（fork子）でも発火する（グローバル登録リスナーは fork 前に登録済み）。
-                        $filtered = $this->dispatchEvent('CuStatic.filterHtml', [
-                            'html' => $content,
-                            'url' => $url,
-                            'path' => $path,
-                        ])->getResult();
-                        if (is_string($filtered)) {
-                            $content = $filtered;
-                        }
-                    }
+                    $content = $this->convertContent($response->getBody()->getContents(), $url, $path);
                     file_put_contents($path, $content);
                     $this->writeLog(sprintf('[exportHtml][%s] 出力完了: %s', $this->modeLabel, $path));
                     return;
@@ -337,6 +332,105 @@ class CuStaticService implements CuStaticServiceInterface
 
         // リトライ上限。一時障害で誤った白紙ページを残さないよう空ファイルは作成せず、失敗としてログに残す。
         $this->writeLog(sprintf('[exportHtml][%s] 取得失敗（%d回試行, %s）: %s', $this->modeLabel, $maxAttempts, $lastError, $url));
+    }
+
+    /**
+     * 取得したHTML/RSS等を静的出力向けに変換する
+     *
+     * 処理順:
+     *  1. 揮発値の正規化（html / rss / xml）
+     *  2. 内部URLの静的URL化（html: <a href>・canonical・og:url / rss・xml: <link>・<guid>）
+     *  3. 取得元URL → 公開URL の置き換え（html / rss / xml。public_url 設定時のみ）
+     *  4. CuStatic.filterHtml イベント（html のみ）
+     * 2 は取得元ホストで内部リンクを判定するため、3 より前に行う必要がある。
+     *
+     * @param string $content 取得した内容
+     * @param string $url 取得元URL
+     * @param string $path 出力先パス（拡張子で処理を切り替える）
+     * @return string
+     */
+    public function convertContent(string $content, string $url, string $path): string
+    {
+        $extension = pathinfo($path, PATHINFO_EXTENSION);
+        if (!in_array($extension, ['html', 'rss', 'xml'], true)) {
+            return $content;
+        }
+
+        // RSS にもアップロードファイルURLの乱数クエリ（enclosure 等）が含まれるため正規化する
+        $content = $this->normalizeHtml($content);
+
+        if ($extension === 'html') {
+            $content = CuStaticUtil::convertHtmlLinks($content, $url);
+            $content = CuStaticUtil::convertHeadUrls($content, $url);
+        } else {
+            $content = CuStaticUtil::convertFeedLinks($content, $url);
+        }
+
+        if ($this->rewriteToUrl !== '') {
+            $content = CuStaticUtil::replaceOrigins($content, $this->rewriteFromUrls, $this->rewriteToUrl);
+        }
+
+        if ($extension === 'html') {
+            // 生成HTMLのフィルタフック。アドオンは <script>/<link> の注入や
+            // 追加のリンク書き換え等に利用できる。リスナーが文字列を返せば置き換わる。
+            // 並列（fork子）でも発火する（グローバル登録リスナーは fork 前に登録済み）。
+            $filtered = $this->dispatchEvent('CuStatic.filterHtml', [
+                'html' => $content,
+                'url' => $url,
+                'path' => $path,
+            ])->getResult();
+            if (is_string($filtered)) {
+                $content = $filtered;
+            }
+        }
+
+        return $content;
+    }
+
+    /**
+     * 取得元URL → 公開URL の置き換え設定を行う
+     *
+     * 公開URLが空、または設定 `CuStatic.rewritePublicUrl` が false の場合は置き換えない（従来動作）。
+     *
+     * @param string $baseUrl 書き出しに使う取得元ベースURL
+     * @param string $publicUrl 公開URL（オプション設定 public_url）
+     * @return void
+     */
+    public function configureUrlRewrite(string $baseUrl, string $publicUrl): void
+    {
+        $publicUrl = rtrim(trim($publicUrl), '/');
+        if ($publicUrl === '' || !(Configure::read('CuStatic.rewritePublicUrl') ?? true)) {
+            $this->rewriteFromUrls = [];
+            $this->rewriteToUrl = '';
+            return;
+        }
+        $this->rewriteFromUrls = $this->getRewriteFromUrls($baseUrl);
+        $this->rewriteToUrl = $publicUrl;
+    }
+
+    /**
+     * 公開URLへ置き換える取得元URLの一覧を返す
+     *
+     * 取得元ベースURLに加え、ヘルパーがフルURL生成に使うサイトURL（BcEnv.siteUrl / sslUrl）も対象とする。
+     *
+     * @param string $baseUrl
+     * @return array<int, string>
+     */
+    public function getRewriteFromUrls(string $baseUrl): array
+    {
+        $urls = [
+            $baseUrl,
+            (string) (Configure::read('BcEnv.siteUrl') ?? ''),
+            (string) (Configure::read('BcEnv.sslUrl') ?? ''),
+        ];
+        $result = [];
+        foreach ($urls as $url) {
+            $url = rtrim(trim($url), '/');
+            if ($url !== '' && !in_array($url, $result, true)) {
+                $result[] = $url;
+            }
+        }
+        return $result;
     }
 
     /**
