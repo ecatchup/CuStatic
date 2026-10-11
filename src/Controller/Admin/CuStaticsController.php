@@ -147,8 +147,8 @@ class CuStaticsController extends CuStaticAppController
         // ブログコンテンツ一覧
         $Contents = $this->fetchTable('BaserCore.Contents');
         $blogContents = $Contents->find()
-            ->where(['plugin' => 'BcBlog', 'type' => 'BlogContent'])
-            ->orderBy(['site_id' => 'ASC', 'entity_id' => 'ASC'])
+            ->where(['Contents.plugin' => 'BcBlog', 'Contents.type' => 'BlogContent'])
+            ->orderBy(['Contents.site_id' => 'ASC', 'Contents.entity_id' => 'ASC'])
             ->all();
 
         $blogContentsBySite = [];
@@ -159,8 +159,8 @@ class CuStaticsController extends CuStaticAppController
 
         // カスタムコンテンツ一覧（サイト別）
         $customContents = $Contents->find()
-            ->where(['plugin' => 'BcCustomContent', 'type' => 'CustomContent'])
-            ->orderBy(['site_id' => 'ASC', 'entity_id' => 'ASC'])
+            ->where(['Contents.plugin' => 'BcCustomContent', 'Contents.type' => 'CustomContent'])
+            ->orderBy(['Contents.site_id' => 'ASC', 'Contents.entity_id' => 'ASC'])
             ->all();
 
         $customContentsBySite = [];

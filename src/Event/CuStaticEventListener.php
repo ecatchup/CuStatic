@@ -100,9 +100,9 @@ class CuStaticEventListener extends BcModelEventListener
         $Contents = TableRegistry::getTableLocator()->get('BaserCore.Contents');
         $content = $Contents->find()
             ->where([
-                'plugin' => 'BaserCore',
-                'type' => 'Page',
-                'entity_id' => $page->id,
+                'Contents.plugin' => 'BaserCore',
+                'Contents.type' => 'Page',
+                'Contents.entity_id' => $page->id,
             ])
             ->first();
         if (!$content) {
@@ -218,9 +218,9 @@ class CuStaticEventListener extends BcModelEventListener
         if (!empty($entity->entity_id) && !empty($entity->type) && !empty($entity->plugin)) {
             return $Contents->find()
                 ->where([
-                    'plugin' => $entity->plugin,
-                    'type' => $entity->type,
-                    'entity_id' => $entity->entity_id,
+                    'Contents.plugin' => $entity->plugin,
+                    'Contents.type' => $entity->type,
+                    'Contents.entity_id' => $entity->entity_id,
                 ])
                 ->first();
         }
@@ -252,9 +252,9 @@ class CuStaticEventListener extends BcModelEventListener
         $Contents = TableRegistry::getTableLocator()->get('BaserCore.Contents');
         $children = $Contents->find()
             ->where([
-                'lft >' => $content->lft,
-                'rght <' => $content->rght,
-                'site_id' => $content->site_id,
+                'Contents.lft >' => $content->lft,
+                'Contents.rght <' => $content->rght,
+                'Contents.site_id' => $content->site_id,
             ])
             ->all();
         foreach ($children as $child) {
@@ -288,9 +288,9 @@ class CuStaticEventListener extends BcModelEventListener
         $Contents = TableRegistry::getTableLocator()->get('BaserCore.Contents');
         $content = $Contents->find()
             ->where([
-                'plugin' => 'BcBlog',
-                'type' => 'BlogContent',
-                'entity_id' => $blogPost->blog_content_id,
+                'Contents.plugin' => 'BcBlog',
+                'Contents.type' => 'BlogContent',
+                'Contents.entity_id' => $blogPost->blog_content_id,
             ])
             ->first();
         if (!$content) {
