@@ -15,6 +15,8 @@ use Cake\Core\Configure;
 use Cake\Event\Event;
 use Cake\Log\Log;
 use Cake\ORM\TableRegistry;
+use Cake\Routing\Router;
+use CuStatic\Utility\CuStaticUtil;
 
 /**
  * CuStaticEventListener
@@ -181,7 +183,8 @@ class CuStaticEventListener extends BcModelEventListener
      */
     private function isEnabled(): bool
     {
-        return BcUtil::isAdminSystem() && (bool) Configure::read('CuStatic.cronEnabled');
+        return (bool) Configure::read('CuStatic.cronEnabled')
+            && (BcUtil::isAdminSystem() || CuStaticUtil::isMcpRequest(Router::getRequest()));
     }
 
     /**

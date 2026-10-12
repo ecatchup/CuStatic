@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace CuStatic\Utility;
 
 use Cake\Core\Configure;
+use Cake\Http\ServerRequest;
 
 /**
  * CuStaticUtil
@@ -446,6 +447,23 @@ class CuStaticUtil
         }
 
         return $result;
+    }
+
+    /**
+     * MCP（BcMcp）経由のリクエストかどうか
+     *
+     * MCP のツール呼び出しは管理画面（/baser/admin）を通らないため BcUtil::isAdminSystem() が false になる。
+     * 差分キューに積む対象として、MCP エンドポイント（McpProxy）のリクエストを判定する。
+     * OAuth 等の BcMcp の他コントローラは保存を伴わないため対象外。
+     *
+     * @param ServerRequest|null $request リクエスト（CLI 等では null）
+     * @return bool
+     */
+    public static function isMcpRequest(?ServerRequest $request): bool
+    {
+        return $request !== null
+            && $request->getParam('plugin') === 'BcMcp'
+            && $request->getParam('controller') === 'McpProxy';
     }
 
 }

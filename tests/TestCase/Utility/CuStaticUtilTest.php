@@ -305,4 +305,29 @@ class CuStaticUtilTest extends BcTestCase
         $this->assertSame($expected, CuStaticUtil::convertFeedLinks($xml, $url));
     }
 
+    /**
+     * MCP（BcMcp の McpProxy）経由のリクエストを判定する
+     *
+     * MCP からの保存も差分キューに積むため。/mcp・/bc-mcp どちらのパスでも
+     * ルーティング結果（plugin・controller）で判定する
+     *
+     * @dataProvider isMcpRequestDataProvider
+     */
+    public function testIsMcpRequest(?array $params, bool $expected): void
+    {
+        $request = $params === null ? null : new \Cake\Http\ServerRequest(['params' => $params]);
+        $this->assertSame($expected, CuStaticUtil::isMcpRequest($request));
+    }
+
+    public static function isMcpRequestDataProvider(): array
+    {
+        return [
+            'MCP エンドポイント' => [['plugin' => 'BcMcp', 'controller' => 'McpProxy', 'action' => 'index'], true],
+            'BcMcp の OAuth（保存しない）' => [['plugin' => 'BcMcp', 'controller' => 'Oauth2', 'action' => 'token'], false],
+            'フロント' => [['plugin' => 'BaserCore', 'controller' => 'Pages', 'action' => 'display'], false],
+            'プラグインなし' => [['plugin' => null, 'controller' => 'McpProxy', 'action' => 'index'], false],
+            'リクエストなし（CLI）' => [null, false],
+        ];
+    }
+
 }
