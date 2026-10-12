@@ -1002,6 +1002,13 @@ class CuStaticService implements CuStaticServiceInterface
             }
         }
 
+        // 変更があるときは、テーマで記事一覧等を埋め込んでいるページ（トップ等）も再生成する
+        if ($jobs || $deletePaths) {
+            foreach ((array) Configure::read('CuStatic.diffExtraUrls') as $extraUrl) {
+                $this->addJob($jobs, $baseUrl . '/' . ltrim((string) $extraUrl, '/'), $exportPath . CuStaticUtil::urlToExportPath((string) $extraUrl));
+            }
+        }
+
         return [
             'jobs' => array_values($jobs),
             'deletePaths' => array_values(array_unique($deletePaths)),

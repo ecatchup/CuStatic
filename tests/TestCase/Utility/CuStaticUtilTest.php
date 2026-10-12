@@ -330,4 +330,23 @@ class CuStaticUtilTest extends BcTestCase
         ];
     }
 
+    /**
+     * @dataProvider urlToExportPathDataProvider
+     */
+    public function testUrlToExportPath(string $url, string $expected): void
+    {
+        $this->assertSame($expected, CuStaticUtil::urlToExportPath($url));
+    }
+
+    public static function urlToExportPathDataProvider(): array
+    {
+        return [
+            'トップ' => ['/', 'index.html'],
+            'フォルダ' => ['/news/', 'news' . DIRECTORY_SEPARATOR . 'index.html'],
+            'ページ' => ['/about', 'about.html'],
+            '階層ページ' => ['/service/web', 'service' . DIRECTORY_SEPARATOR . 'web.html'],
+            '先頭スラッシュなし' => ['about', 'about.html'],
+        ];
+    }
+
 }

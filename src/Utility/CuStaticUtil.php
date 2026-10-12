@@ -466,4 +466,22 @@ class CuStaticUtil
             && $request->getParam('controller') === 'McpProxy';
     }
 
+    /**
+     * サイト内URLを出力先からの相対パスへ変換する
+     *
+     * 末尾スラッシュはフォルダとして index.html、それ以外は .html を付ける
+     * （例: '/' → 'index.html'、'/news/' → 'news/index.html'、'/about' → 'about.html'）。
+     *
+     * @param string $url サイト内URL
+     * @return string 出力先からの相対パス
+     */
+    public static function urlToExportPath(string $url): string
+    {
+        $path = str_replace('/', DIRECTORY_SEPARATOR, ltrim($url, '/'));
+        if ($path === '' || str_ends_with($path, DIRECTORY_SEPARATOR)) {
+            return $path . 'index.html';
+        }
+        return $path . '.html';
+    }
+
 }
