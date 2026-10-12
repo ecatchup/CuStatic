@@ -117,6 +117,12 @@ class CuStaticUtilTest extends BcTestCase
             'ページ1' => ['/news?page=1', '/news.html'],
             // 日付アーカイブの月はゼロ埋めに正規化
             '日付アーカイブ' => ['/news/archives/date/2026/6', '/news/archives/date/2026/06.html'],
+            // ページ内の位置指定（フラグメント）は変換後も残す
+            'ルートとフラグメント' => ['/#contact', '/index.html#contact'],
+            '拡張子なしとフラグメント' => ['/about#team', '/about.html#team'],
+            '同一ホスト絶対URLとフラグメント' => ['https://example.com/about/#team', '/about/index.html#team'],
+            'ページネーションとフラグメント' => ['/news?page=2#list', '/news/page-2.html#list'],
+            'アセットとフラグメント' => ['/files/doc.pdf#page=2', '/files/doc.pdf#page=2'],
         ];
     }
 

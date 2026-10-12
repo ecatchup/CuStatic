@@ -132,8 +132,9 @@ class CuStaticUtil
             return $href;
         }
 
-        // 属性値のエスケープを戻し（&amp; → &）、フラグメントを除去して解析
-        $decoded = explode('#', str_replace('&amp;', '&', $raw), 2)[0];
+        // 属性値のエスケープを戻し（&amp; → &）、フラグメントを分けて解析する（変換後に付け直す）
+        [$decoded, $fragment] = array_pad(explode('#', str_replace('&amp;', '&', $raw), 2), 2, null);
+        $fragment = $fragment === null ? '' : '#' . $fragment;
         if ($decoded === '') {
             return $href;
         }
@@ -195,10 +196,10 @@ class CuStaticUtil
 
         // ページネーション ?page=N（N>=2）。page=1・クエリなしは一覧本体（index等）
         if ($query !== '' && preg_match('/(?:^|&)page=(\d+)/', $query, $m) && (int) $m[1] >= 2) {
-            return rtrim($path, '/') . '/page-' . (int) $m[1] . '.html';
+            return rtrim($path, '/') . '/page-' . (int) $m[1] . '.html' . $fragment;
         }
 
-        return $path . '.html';
+        return $path . '.html' . $fragment;
     }
 
     /**
