@@ -11,7 +11,7 @@ namespace CuStatic\Model\Table;
 
 use ArrayObject;
 use Cake\Event\EventInterface;
-use Cake\ORM\Table;
+use BaserCore\Model\Table\AppTable;
 use Cake\Validation\Validator;
 
 /**
@@ -20,7 +20,7 @@ use Cake\Validation\Validator;
  * 静的HTML出力プラグインの設定を管理する。
  * 旧版のKV形式（cu_static_configs）をカラム型に変更。
  */
-class CuStaticConfigsTable extends Table
+class CuStaticConfigsTable extends AppTable
 {
 
     /**

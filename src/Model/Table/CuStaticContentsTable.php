@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace CuStatic\Model\Table;
 
-use Cake\ORM\Table;
+use BaserCore\Model\Table\AppTable;
 
 /**
  * CuStaticContentsTable
@@ -17,7 +17,7 @@ use Cake\ORM\Table;
  * 静的HTML出力が必要なコンテンツを差分キューとして管理する。
  * 旧版の meta / controller / action カラムを廃止。
  */
-class CuStaticContentsTable extends Table
+class CuStaticContentsTable extends AppTable
 {
 
     /**
