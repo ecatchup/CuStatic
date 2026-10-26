@@ -46,6 +46,11 @@ $config = [
         // テーマ側でブログ記事一覧等を埋め込んでいるページ（トップ等）は差分キューに載らないため、
         // ここに指定して一緒に再生成する（例: ['/']）
         'diffExtraUrls' => [],
+        // 内部リンク・canonical・RSS のURLの書き方。出力ファイルの配置はどちらも同じ。
+        // html: /about.html・/company/index.html（拡張子なしのURLを解決できない Apache 等）
+        // pretty: /about・/company/（Cloudflare Workers Static Assets・Pages 等、
+        //         拡張子なしのURLで .html を返すホスティング向け。公開URLを動的サイトと同じに保てる）
+        'linkStyle' => 'html',
         // 実行ロックの有効期限（秒）。実行中(status=1)でも開始からこの秒数を超えると
         // 異常終了で取り残された stale ロックとみなし、次回実行が奪取して再開します。
         'lockTimeout' => 3600,

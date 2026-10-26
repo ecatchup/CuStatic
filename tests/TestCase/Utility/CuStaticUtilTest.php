@@ -127,6 +127,62 @@ class CuStaticUtilTest extends BcTestCase
     }
 
     /**
+     * linkStyle=pretty では .html・index.html を付けない（出力ファイルとの対応は html と同じ）
+     *
+     * @dataProvider convertHrefPrettyDataProvider
+     */
+    public function testConvertHrefPretty(string $href, string $expected): void
+    {
+        $original = \Cake\Core\Configure::read('CuStatic.linkStyle');
+        \Cake\Core\Configure::write('CuStatic.linkStyle', 'pretty');
+        try {
+            $this->assertSame($expected, CuStaticUtil::convertHref($href, 'example.com', '/news/current'));
+        } finally {
+            \Cake\Core\Configure::write('CuStatic.linkStyle', $original);
+        }
+    }
+
+    public static function convertHrefPrettyDataProvider(): array
+    {
+        return [
+            'アンカー' => ['#section', '#section'],
+            '別ホスト' => ['https://other.example.net/foo', 'https://other.example.net/foo'],
+            '同一ホスト絶対URL' => ['https://example.com/about', '/about'],
+            '拡張子なし' => ['/company/access', '/company/access'],
+            '末尾スラッシュ' => ['/company/', '/company/'],
+            'ルート' => ['/', '/'],
+            '/index は末尾スラッシュに揃える' => ['/news/index', '/news/'],
+            'アセット' => ['/theme/style.css', '/theme/style.css'],
+            '.html 付きはそのまま' => ['/about/guide.html', '/about/guide.html'],
+            '相対リンク' => ['sub/page', '/news/sub/page'],
+            'ページネーション' => ['/news?page=2', '/news/page-2'],
+            '一覧のページネーション' => ['/news/?page=3', '/news/index/page-3'],
+            'ページ1' => ['/news?page=1', '/news'],
+            '日付アーカイブ' => ['/news/archives/date/2026/6', '/news/archives/date/2026/06'],
+            'ルートとフラグメント' => ['/#contact', '/#contact'],
+            'ページネーションとフラグメント' => ['/news?page=2#list', '/news/page-2#list'],
+        ];
+    }
+
+    /**
+     * linkStyle=pretty では canonical（同一ホストの絶対URL）も拡張子なしのまま
+     */
+    public function testConvertHeadUrlsPretty(): void
+    {
+        $original = \Cake\Core\Configure::read('CuStatic.linkStyle');
+        \Cake\Core\Configure::write('CuStatic.linkStyle', 'pretty');
+        try {
+            $html = '<link rel="canonical" href="https://example.com/about">'
+                . '<meta property="og:url" content="https://example.com/news/index">';
+            $converted = CuStaticUtil::convertHeadUrls($html, 'https://example.com/about');
+            $this->assertStringContainsString('href="https://example.com/about"', $converted);
+            $this->assertStringContainsString('content="https://example.com/news/"', $converted);
+        } finally {
+            \Cake\Core\Configure::write('CuStatic.linkStyle', $original);
+        }
+    }
+
+    /**
      * メールフォームページの症状再現: <a href> の内部リンクが静的URLへ変換される
      *
      * CuStaticAddonMailForm が自前生成するフォームページ（/contact/）で、

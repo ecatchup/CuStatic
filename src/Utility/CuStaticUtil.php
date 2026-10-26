@@ -114,6 +114,7 @@ class CuStaticUtil
      *   - 末尾 / → /index.html
      *   - 拡張子なし → .html 付与
      *   - ページネーション ?page=N（N>=2）→ {パス}/page-N.html（baserCMS5 のクエリ形式に対応）
+     * 設定 `CuStatic.linkStyle` が pretty の場合は .html・index.html を付けない（applyLinkStyle()）。
      *
      * @param string $href 元の href
      * @param string $baseHost 対象ホスト
@@ -197,10 +198,32 @@ class CuStaticUtil
 
         // ページネーション ?page=N（N>=2）。page=1・クエリなしは一覧本体（index等）
         if ($query !== '' && preg_match('/(?:^|&)page=(\d+)/', $query, $m) && (int) $m[1] >= 2) {
-            return rtrim($path, '/') . '/page-' . (int) $m[1] . '.html' . $fragment;
+            return self::applyLinkStyle(rtrim($path, '/') . '/page-' . (int) $m[1] . '.html') . $fragment;
         }
 
-        return $path . '.html' . $fragment;
+        return self::applyLinkStyle($path . '.html') . $fragment;
+    }
+
+    /**
+     * 設定 `CuStatic.linkStyle` に合わせて、出力ファイルのパスをリンク用のURLにする
+     *
+     * - html（既定）: そのまま（/about.html・/company/index.html）
+     * - pretty: 拡張子を付けない（/about・/company/）。出力ファイルの配置は html と同じで、
+     *   拡張子なしのURLで .html を返すホスティング（Cloudflare Workers Static Assets、
+     *   Cloudflare Pages、Netlify 等）向け
+     *
+     * @param string $htmlPath 出力ファイルに対応するパス（.html 付き）
+     * @return string
+     */
+    public static function applyLinkStyle(string $htmlPath): string
+    {
+        if ((Configure::read('CuStatic.linkStyle') ?? 'html') !== 'pretty') {
+            return $htmlPath;
+        }
+        if (str_ends_with($htmlPath, '/index.html')) {
+            return substr($htmlPath, 0, -strlen('index.html'));
+        }
+        return substr($htmlPath, 0, -strlen('.html'));
     }
 
     /**
