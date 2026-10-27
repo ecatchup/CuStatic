@@ -507,4 +507,43 @@ class CuStaticUtil
         return $path . '.html';
     }
 
+    /**
+     * リダイレクト先（Location ヘッダ）を、取得元と同じホストの絶対URLにする
+     *
+     * 別のホストへのリダイレクトは追わない（null を返す）。取得元とホスト・ポートが同じなら
+     * スキームの違い（http → https）は許す。
+     *
+     * @param string $url 取得したURL
+     * @param string $location Location ヘッダの値
+     * @return string|null 次に取得するURL。追わない場合は null
+     */
+    public static function resolveRedirectUrl(string $url, string $location): ?string
+    {
+        $location = trim($location);
+        if ($location === '') {
+            return null;
+        }
+        $from = parse_url($url);
+        if ($from === false || empty($from['host'])) {
+            return null;
+        }
+        $origin = ($from['scheme'] ?? 'http') . '://' . $from['host'] . (isset($from['port']) ? ':' . $from['port'] : '');
+
+        if (str_starts_with($location, '//')) {
+            $location = ($from['scheme'] ?? 'http') . ':' . $location;
+        } elseif (str_starts_with($location, '/')) {
+            return $origin . $location;
+        } elseif (!preg_match('#^https?://#i', $location)) {
+            // 相対パスは取得元のディレクトリ基準
+            $dir = rtrim(str_replace('\\', '/', dirname($from['path'] ?? '/')), '/');
+            return $origin . $dir . '/' . $location;
+        }
+
+        $to = parse_url($location);
+        if ($to === false || strcasecmp($to['host'] ?? '', $from['host']) !== 0 || ($to['port'] ?? null) !== ($from['port'] ?? null)) {
+            return null;
+        }
+        return $location;
+    }
+
 }

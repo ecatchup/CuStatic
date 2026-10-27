@@ -183,6 +183,30 @@ class CuStaticUtilTest extends BcTestCase
     }
 
     /**
+     * リダイレクト先は同じホストのときだけ追う
+     *
+     * @dataProvider resolveRedirectUrlDataProvider
+     */
+    public function testResolveRedirectUrl(string $url, string $location, ?string $expected): void
+    {
+        $this->assertSame($expected, CuStaticUtil::resolveRedirectUrl($url, $location));
+    }
+
+    public static function resolveRedirectUrlDataProvider(): array
+    {
+        return [
+            'index を / へ（絶対URL）' => ['http://localhost/about/index', 'http://localhost/about/', 'http://localhost/about/'],
+            'ルート相対' => ['http://localhost/news/index?page=2', '/news/?page=2', 'http://localhost/news/?page=2'],
+            'http → https は追う' => ['http://example.com/about/index', 'https://example.com/about/', 'https://example.com/about/'],
+            'ポート付き' => ['https://localhost:8543/index', 'https://localhost:8543/', 'https://localhost:8543/'],
+            '相対パス' => ['http://localhost/news/index', 'page', 'http://localhost/news/page'],
+            '別ホストは追わない' => ['http://localhost/about', 'https://other.example.net/about', null],
+            'ポート違いは追わない' => ['http://localhost/about', 'http://localhost:8080/about', null],
+            'Location なし' => ['http://localhost/about', '', null],
+        ];
+    }
+
+    /**
      * メールフォームページの症状再現: <a href> の内部リンクが静的URLへ変換される
      *
      * CuStaticAddonMailForm が自前生成するフォームページ（/contact/）で、

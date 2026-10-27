@@ -50,6 +50,11 @@ class CuStaticService implements CuStaticServiceInterface
     use EventDispatcherTrait;
 
     /**
+     * HTML取得時に追うリダイレクトの最大回数（同じホスト内のみ）
+     */
+    private const MAX_REDIRECTS = 3;
+
+    /**
      * @var \CuStatic\Model\Table\CuStaticConfigsTable
      */
     protected $CuStaticConfigs;
@@ -354,8 +359,9 @@ class CuStaticService implements CuStaticServiceInterface
 
         for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
             try {
-                $response = $client->get($url);
-                if ($response->isOk()) {
+                $response = $this->fetchFollowingRedirects($client, $url);
+                // isOk() は 3xx も真になるため、2xx だけを保存する
+                if ($response->isSuccess()) {
                     $content = $this->convertContent($response->getBody()->getContents(), $url, $path);
                     file_put_contents($path, $content);
                     $this->writeLog(sprintf('[exportHtml][%s] 出力完了: %s', $this->modeLabel, $path));
@@ -363,7 +369,7 @@ class CuStaticService implements CuStaticServiceInterface
                 }
 
                 $status = $response->getStatusCode();
-                // 4xx はリトライしても結果が変わらないため即時打ち切り
+                // 追い切れなかったリダイレクト（別ホスト・回数超過）と 4xx は、リトライしても結果が変わらないため即時打ち切り
                 if ($status < 500) {
                     $this->writeLog(sprintf('[exportHtml][%s] HTTPエラー %d（スキップ）: %s', $this->modeLabel, $status, $url));
                     return;
@@ -380,6 +386,31 @@ class CuStaticService implements CuStaticServiceInterface
 
         // リトライ上限。一時障害で誤った白紙ページを残さないよう空ファイルは作成せず、失敗としてログに残す。
         $this->writeLog(sprintf('[exportHtml][%s] 取得失敗（%d回試行, %s）: %s', $this->modeLabel, $maxAttempts, $lastError, $url));
+    }
+
+    /**
+     * 同じホスト内のリダイレクトを追って取得する
+     *
+     * フォルダ・ブログ一覧は /about/index・/news/index?page=2 の形で取得するため、
+     * サイト側で index を / へ 301 している場合（SEO でよくある設定）に、
+     * リダイレクトの応答本文を保存してしまわないよう、行き先を取得する。
+     *
+     * @param Client $client
+     * @param string $url
+     * @return \Cake\Http\Client\Response 最後に受け取った応答（追えなかった場合は 3xx のまま）
+     */
+    private function fetchFollowingRedirects(Client $client, string $url): \Cake\Http\Client\Response
+    {
+        $response = $client->get($url);
+        for ($i = 0; $i < self::MAX_REDIRECTS && $response->isRedirect(); $i++) {
+            $next = CuStaticUtil::resolveRedirectUrl($url, $response->getHeaderLine('Location'));
+            if ($next === null) {
+                break;
+            }
+            $url = $next;
+            $response = $client->get($url);
+        }
+        return $response;
     }
 
     /**
