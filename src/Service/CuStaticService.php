@@ -1453,6 +1453,18 @@ class CuStaticService implements CuStaticServiceInterface
             $page++;
         } while ($rowCount === $chunkSize);
 
+        // 削除済みのユーザーの著者別アーカイブは動的サイトでも 404 になるため、実在するユーザーだけにする
+        if ($authorCounts) {
+            $existingUserIds = TableRegistry::getTableLocator()->get('BaserCore.Users')->find()
+                ->select(['Users.id'])
+                ->where(['Users.id IN' => array_keys($authorCounts)])
+                ->disableHydration()
+                ->all()
+                ->extract('id')
+                ->toList();
+            $authorCounts = array_intersect_key($authorCounts, array_flip(array_map('intval', $existingUserIds)));
+        }
+
         return [
             'total' => $total,
             'dateCounts' => $dateCounts,
