@@ -280,10 +280,12 @@ class CuStaticService implements CuStaticServiceInterface
 
             // 書き出し後コマンド（CDN キャッシュ削除・デプロイ等）。アドオンの afterExport 処理
             // （git デプロイ等）の完了後に実行する。失敗しても書き出し自体は成功扱いとする。
+            // jobCount はアドオン追加分を含めた件数にする。本体に変更が無くても、アドオンが
+            // 書き出したページ（独自ルートのページ等）があればデプロイを飛ばさないため。
             $this->runAfterExportCommands([
                 'exportPath' => $exportPath,
                 'mode' => $this->modeLabel,
-                'jobCount' => $coreJobCount,
+                'jobCount' => count($jobs),
                 'deleteCount' => $deleteCount,
                 'publicUrl' => rtrim((string) ($config->public_url ?? ''), '/'),
                 'baseUrl' => $baseUrl,

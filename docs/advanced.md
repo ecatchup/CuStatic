@@ -115,7 +115,7 @@ Docker 環境ではホストの crontab から `docker exec bc-php bin/cake cu_s
 | `label` | マスクしたコマンド | 画面・ログに表示する名前 |
 | `cwd` | 出力先フォルダ | 作業ディレクトリ |
 | `modes` | `['all', 'diff']` | 実行するモード（`main` は `all` の別名） |
-| `skipIfNoChange` | `true` | 差分書き出しで出力・削除が 0 件のときは実行しない（cron の毎分実行で毎回キャッシュを消さないため） |
+| `skipIfNoChange` | `true` | 差分書き出しで出力・削除が 0 件のときは実行しない（cron の毎分実行で毎回キャッシュを消さないため）。出力にはアドオンが追加したページも数える |
 | `timeout` | `300` | タイムアウト（秒）。超えるとコマンドとその子プロセスを停止します |
 | `stopOnError` | `false` | 失敗（終了コード 0 以外・タイムアウト）時に後続のコマンドを実行しない |
 | `env` | `[]` | 追加の環境変数 |
@@ -128,7 +128,7 @@ Docker 環境ではホストの crontab から `docker exec bc-php bin/cake cu_s
 |------|------|
 | `CU_STATIC_EXPORT_PATH` | 出力先フォルダ（末尾の `/` なし） |
 | `CU_STATIC_MODE` | `all`（全件）または `diff`（差分） |
-| `CU_STATIC_JOB_COUNT` | 書き出したページ数（アドオンが追加した分を除く） |
+| `CU_STATIC_JOB_COUNT` | 書き出したページ数（アドオンが追加した分を含む） |
 | `CU_STATIC_DELETE_COUNT` | 差分書き出しで削除したファイル数（全件は 0） |
 | `CU_STATIC_PUBLIC_URL` | オプション設定の「公開URL」 |
 | `CU_STATIC_BASE_URL` | 書き出しに使った取得元のベースURL |
