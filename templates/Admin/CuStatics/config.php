@@ -84,21 +84,19 @@ $targetConfig = json_decode($config->target_config ?? '{}', true) ?? [];
 			</td>
 		</tr>
 		<tr>
-			<th class="bca-form-table__label">
-				<?= $this->BcAdminForm->label('rsync_command', 'rsyncコマンド') ?>
-			</th>
+			<th class="bca-form-table__label">rsyncコマンド</th>
 			<td class="col-input bca-form-table__input">
-				<?= $this->BcAdminForm->control('rsync_command', [
-					'type' => 'text',
-					'size' => 60,
-					'maxlength' => 255,
-					'placeholder' => 'rsync -a --delete（空の場合はPHPコピーを使用）',
-					'label' => false,
-				]) ?>
-				<?= $this->BcAdminForm->error('rsync_command') ?>
+				<?php // 管理画面から任意のコマンドを登録できないよう、表示のみ（書き出し後コマンドと同じ方針） ?>
+				<?php $rsyncCommand = (string)(\Cake\Core\Configure::read('CuStatic.rsyncCommand') ?? '') ?>
+				<?php if ($rsyncCommand !== ''): ?>
+					<code><?= h($rsyncCommand) ?></code>
+				<?php else: ?>
+					未設定（PHP でコピーします）
+				<?php endif ?>
 				<i class="bca-icon--question-circle bca-help"></i>
 				<div class="bca-helptext">
-					通常は指定不要ですが、大量の画像があるなどで静的コンテンツのコピーに時間がかかる場合などに高速でコピーできるコマンドを指定できます
+					大量の画像などで静的コンテンツのコピーに時間がかかる場合に、高速でコピーできるコマンドを指定できます。<br>
+					登録・変更は <code>config/setting_customize.php</code> の <code>CuStatic.rsyncCommand</code> で行います。
 				</div>
 			</td>
 		</tr>

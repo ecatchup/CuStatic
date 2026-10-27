@@ -30,7 +30,7 @@ CuStatic は、baserCMS で作成した Web サイト内のページを **静的
 | 出力先（必須） | HTML の書き出し先フォルダの絶対パス。**全件出力時は出力先フォルダ内を一旦削除してから出力**します。 |
 | ベースURL | HTML 取得元のベースURL。空の場合はサイト設定（`BcEnv`）の URL を使用します。 |
 | 公開URL | 静的サイトを配信するURL（例: `https://www.example.com`）。設定すると、出力 HTML・RSS 内の取得元（管理側）の絶対URL（canonical・RSS の記事リンク・OGP 等）を公開URLへ書き換えます。アドオン（静的メールフォーム等）の許可オリジンの既定値にもなります。 |
-| rsyncコマンド | アセットコピーに使う rsync コマンド。空の場合は PHP でのファイルコピーを行います。 |
+| rsyncコマンド | 表示のみ。`setting_customize.php` の `CuStatic.rsyncCommand` に登録したコマンドを表示します（未設定なら PHP でコピー）。 |
 | 出力対象 | サイト × コンテンツ種別（フォルダ／固定ページ／ブログの各種一覧・詳細）のチェックボックス。 |
 
 ### 静的HTML出力
@@ -71,6 +71,7 @@ CuStatic は、baserCMS で作成した Web サイト内のページを **静的
 | `CuStatic.plugins` | `BcBlog` / `BcFront` | `webroot` コピー対象のプラグイン |
 | `CuStatic.httpMaxAttempts` | `3` | HTML取得の最大試行回数（5xx・接続エラー時にリトライ。1でリトライなし） |
 | `CuStatic.chunkSize` | `1000` | ブログ投稿集計時のチャンク件数（大量投稿時のメモリ抑制） |
+| `CuStatic.rsyncCommand` | `''`（PHP でコピー） | アセット（css・js・img・files・プラグインの webroot）のコピーに使う rsync コマンド（例: `rsync -a --delete`）。すべてのコピーに同じ指定が効くので、`files` の一部だけを除外するときはルート固定（`--exclude=/basercms/`）で書く。管理画面からは登録できない |
 | `CuStatic.lockTimeout` | `3600` | 実行ロックの有効期限（秒）。開始からこの秒数を超えた実行中フラグは stale として次回実行が奪取 |
 | `CuStatic.linkStyle` | `html` | 内部リンク・canonical・RSS のURLの書き方。`html` は `/about.html`・`/company/index.html`、`pretty` は `/about`・`/company/`（ページ送りは `/news/index/page-2`）。出力ファイルの配置は同じ。Cloudflare Workers Static Assets・Pages など、拡張子なしのURLで `.html` を返すホスティングでは `pretty` にすると公開URLを動的サイトと同じに保てる |
 | `CuStatic.rewritePublicUrl` | `true` | 公開URL設定時に、出力内容の取得元URLを公開URLへ書き換えるか |
