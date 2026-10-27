@@ -426,6 +426,34 @@ class CuStaticUtilTest extends BcTestCase
             'ページ' => ['/about', 'about.html'],
             '階層ページ' => ['/service/web', 'service' . DIRECTORY_SEPARATOR . 'web.html'],
             '先頭スラッシュなし' => ['about', 'about.html'],
+            '.html で終わるページ（html モード）' => ['/manuals/etc/6.html', 'manuals' . DIRECTORY_SEPARATOR . 'etc' . DIRECTORY_SEPARATOR . '6.html'],
+        ];
+    }
+
+    /**
+     * 固定ページの出力ファイル名。URL が .html で終わるページは linkStyle で変わる
+     *
+     * @dataProvider pageFilePathDataProvider
+     */
+    public function testPageFilePath(string $linkStyle, string $pagePath, string $expected): void
+    {
+        $original = \Cake\Core\Configure::read('CuStatic.linkStyle');
+        \Cake\Core\Configure::write('CuStatic.linkStyle', $linkStyle);
+        try {
+            $this->assertSame($expected, CuStaticUtil::pageFilePath($pagePath));
+        } finally {
+            \Cake\Core\Configure::write('CuStatic.linkStyle', $original);
+        }
+    }
+
+    public static function pageFilePathDataProvider(): array
+    {
+        return [
+            'html: 通常' => ['html', 'about', 'about.html'],
+            'html: .html で終わる' => ['html', 'manuals/etc/6.html', 'manuals/etc/6.html'],
+            'html: 末尾スラッシュは無視' => ['html', 'about/', 'about.html'],
+            'pretty: 通常' => ['pretty', 'about', 'about.html'],
+            'pretty: .html で終わる' => ['pretty', 'manuals/etc/6.html', 'manuals/etc/6.html.html'],
         ];
     }
 

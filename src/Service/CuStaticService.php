@@ -828,7 +828,7 @@ class CuStaticService implements CuStaticServiceInterface
                     break;
                 case 'Page':
                     if ($targetConfig[$modePrefix . 'page' . $prefix] ?? true) {
-                        $this->addJob($jobs, $baseUrl . '/' . $pageUrl, $exportPath . rtrim($pagePath, '/') . '.html');
+                        $this->addJob($jobs, $baseUrl . '/' . $pageUrl, $exportPath . CuStaticUtil::pageFilePath($pagePath));
                     }
                     break;
                 case 'BlogContent':
@@ -1073,7 +1073,7 @@ class CuStaticService implements CuStaticServiceInterface
                 $this->addJob($jobs, $baseUrl . '/' . $pageUrl, $exportPath . $pagePath . 'index.html');
                 break;
             case 'Page':
-                $this->addJob($jobs, $baseUrl . '/' . $pageUrl, $exportPath . rtrim($pagePath, '/') . '.html');
+                $this->addJob($jobs, $baseUrl . '/' . $pageUrl, $exportPath . CuStaticUtil::pageFilePath($pagePath));
                 break;
             case 'BlogContent':
                 $indexOne = (bool) ($targetConfig['blog_index_one_diff_' . $item->site_id . '_' . $item->entity_id] ?? false);
@@ -1093,7 +1093,7 @@ class CuStaticService implements CuStaticServiceInterface
                 }
                 break;
             case 'BlogPost':
-                $this->addJob($jobs, $baseUrl . '/' . $pageUrl, $exportPath . rtrim($pagePath, '/') . '.html');
+                $this->addJob($jobs, $baseUrl . '/' . $pageUrl, $exportPath . CuStaticUtil::pageFilePath($pagePath));
                 break;
             case 'CustomContent':
                 // 一覧・ページングを再生成（詳細は個別 CustomEntry キューが担当）
@@ -1113,7 +1113,7 @@ class CuStaticService implements CuStaticServiceInterface
                 }
                 break;
             case 'CustomEntry':
-                $this->addJob($jobs, $baseUrl . '/' . $pageUrl, $exportPath . rtrim($pagePath, '/') . '.html');
+                $this->addJob($jobs, $baseUrl . '/' . $pageUrl, $exportPath . CuStaticUtil::pageFilePath($pagePath));
                 break;
         }
     }
@@ -1211,7 +1211,7 @@ class CuStaticService implements CuStaticServiceInterface
                 return [rtrim($exportPath . $pagePath, DIRECTORY_SEPARATOR)];
             default:
                 // Page / BlogPost / CustomEntry
-                return [$exportPath . rtrim($pagePath, '/') . '.html'];
+                return [$exportPath . CuStaticUtil::pageFilePath($pagePath)];
         }
     }
 

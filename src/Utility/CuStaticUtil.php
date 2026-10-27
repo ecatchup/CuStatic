@@ -504,6 +504,27 @@ class CuStaticUtil
         if ($path === '' || str_ends_with($path, DIRECTORY_SEPARATOR)) {
             return $path . 'index.html';
         }
+        return self::pageFilePath($path);
+    }
+
+    /**
+     * 固定ページ等の出力ファイル名（出力先からの相対パス）を返す
+     *
+     * 通常は URL に .html を付ける（'about' → 'about.html'）。
+     * URL が .html で終わるページ（4系から移行したサイトに多い。例: 'manuals/etc/6.html'）は、
+     *   - linkStyle が html のときは URL のままの名前にする（本文のリンク /manuals/etc/6.html がそのまま届くように）
+     *   - pretty のときは .html を付ける（'6.html.html'）。拡張子なしのURLで .html を返すホスティングでは、
+     *     /manuals/etc/6.html で 6.html.html が返り URL が変わらない（6.html だと /manuals/etc/6 へ転送される）
+     *
+     * @param string $pagePath URL のパス（出力先からの相対。末尾の / は無視する）
+     * @return string
+     */
+    public static function pageFilePath(string $pagePath): string
+    {
+        $path = rtrim($pagePath, '/');
+        if (str_ends_with($path, '.html') && (Configure::read('CuStatic.linkStyle') ?? 'html') !== 'pretty') {
+            return $path;
+        }
         return $path . '.html';
     }
 
