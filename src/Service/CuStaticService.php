@@ -171,7 +171,9 @@ class CuStaticService implements CuStaticServiceInterface
                 if (is_dir($exportPath)) {
                     // 破壊的削除の前に、アプリ本体・webroot 等の重要ディレクトリを指していないか検証する
                     $this->assertSafeExportPath($exportPath);
-                    $this->deleteDirectory($exportPath);
+                    // 出力先そのものは消さずに中身だけを消す。
+                    // 消して作り直すと、サーバで付けた持ち主・グループ・既定の ACL・SELinux のラベルが外れる
+                    $this->deleteDirectory($exportPath, true);
                 }
                 if (!is_dir($exportPath)) {
                     mkdir($exportPath, 0777, true);
@@ -1733,9 +1735,10 @@ class CuStaticService implements CuStaticServiceInterface
      * ディレクトリを再帰的に削除する
      *
      * @param string $path
+     * @param bool $keepRoot true のときは中身だけを消し、$path 自体は残す
      * @return void
      */
-    private function deleteDirectory(string $path): void
+    private function deleteDirectory(string $path, bool $keepRoot = false): void
     {
         if (!is_dir($path)) {
             return;
@@ -1747,7 +1750,9 @@ class CuStaticService implements CuStaticServiceInterface
         foreach ($iterator as $item) {
             $item->isDir() ? rmdir($item->getPathname()) : unlink($item->getPathname());
         }
-        rmdir($path);
+        if (!$keepRoot) {
+            rmdir($path);
+        }
     }
 
 }
