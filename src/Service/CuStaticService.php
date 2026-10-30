@@ -1632,8 +1632,11 @@ class CuStaticService implements CuStaticServiceInterface
      */
     private function copyDirectory(string $src, string $dst, string $rsyncCommand = ''): int
     {
+        // 権限は 0777 を渡して umask・既定の ACL に任せる（ページの出力先 mkdir と同じ）。
+        // 0755 にすると、既定の ACL がある出力先ではグループの書き込みが落ち、
+        // 別ユーザー（管理画面の Web サーバとコマンドの実行ユーザー）の次回の書き出しで削除できない
         if (!is_dir($dst)) {
-            mkdir($dst, 0755, true);
+            mkdir($dst, 0777, true);
         }
 
         if ($rsyncCommand !== '') {
@@ -1655,7 +1658,7 @@ class CuStaticService implements CuStaticServiceInterface
             $target = $dst . ltrim($relativePath, DIRECTORY_SEPARATOR);
             if ($item->isDir()) {
                 if (!is_dir($target)) {
-                    mkdir($target, 0755, true);
+                    mkdir($target, 0777, true);
                 }
             } else {
                 // 増分判定: 同一サイズかつコピー先が新しい（または同時刻）ならスキップ。
