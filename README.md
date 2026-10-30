@@ -68,7 +68,7 @@ CuStatic は、baserCMS で作成した Web サイト内のページを **静的
 | `CuStatic.defaultWorkers` | `4` | 既定の並列ワーカー数 |
 | `CuStatic.cronEnabled` | `false` | 差分書き出し（CRON）機能の有効化フラグ |
 | `CuStatic.types` | `Page` / `ContentFolder` / `BlogContent` | 書き出し対象のコンテンツ種別 |
-| `CuStatic.plugins` | `BcBlog` / `BcFront` | `webroot` コピー対象のプラグイン |
+| `CuStatic.plugins` | `BaserCore` / `BcBlog` / `BcBurgerEditor` / `BcCustomContent` / `BcFront` | `webroot` コピー対象のプラグイン（無効・未導入のものはスキップ） |
 | `CuStatic.httpMaxAttempts` | `3` | HTML取得の最大試行回数（5xx・接続エラー時にリトライ。1でリトライなし） |
 | `CuStatic.chunkSize` | `1000` | ブログ投稿集計時のチャンク件数（大量投稿時のメモリ抑制） |
 | `CuStatic.rsyncCommand` | `''`（PHP でコピー） | アセット（css・js・img・files・プラグインの webroot）のコピーに使う rsync コマンド（例: `rsync -a --delete`）。すべてのコピーに同じ指定が効くので、`files` の一部だけを除外するときはルート固定（`--exclude=/basercms/`）で書く。管理画面からは登録できない |

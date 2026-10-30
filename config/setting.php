@@ -18,8 +18,13 @@ $config = [
             'CustomContent',
         ],
         // 出力対象のプラグイン（webroot コピー対象）
+        // BaserCore はフッターの baser.power.gif（/baser_core/img/）、
+        // BcBurgerEditor は本文ブロックの CSS・JS（/bc_burger_editor/）を公開ページが読むため含める。
+        // 無効・未導入のプラグインは webroot が見つからずスキップされる
         'plugins' => [
+            'BaserCore',
             'BcBlog',
+            'BcBurgerEditor',
             'BcCustomContent',
             'BcFront',
         ],
