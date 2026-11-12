@@ -248,6 +248,12 @@ $renderSiteSection = function(string $modePrefix, bool $isDiff) use ($sites, $bl
 			<tr>
 				<th class="bca-form-table__label">書出処理ステータス</th>
 				<td class="col-input bca-form-table__input">
+					<?php
+					// 画面では disabled で作り、「ステータスを変更する」を入れたときだけ JS で有効にする。
+					// disabled の項目は改ざん防止の一覧に入らないため、有効にして送ると
+					// 「Form tampering protection token validation failed」になる。対象から外す
+					$this->BcAdminForm->unlockField('status');
+					?>
 					<?= $this->BcAdminForm->control('status', [
 						'type' => 'select',
 						'options' => [0 => '0: 待機中', 1 => '1: 実行中'],
