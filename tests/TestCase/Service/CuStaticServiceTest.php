@@ -51,6 +51,59 @@ class CuStaticServiceTest extends BcTestCase
     }
 
     /**
+     * copyAssets は、フォルダごとにコピーを始める前にもログを出す（管理画面のログ表示で進み具合が分かるように）
+     */
+    public function testCopyAssetsLogsBeforeCopy(): void
+    {
+        $tmp = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'custatic_copylog_' . getmypid() . DIRECTORY_SEPARATOR;
+        $www = $tmp . 'webroot' . DIRECTORY_SEPARATOR;
+        $out = $tmp . 'export' . DIRECTORY_SEPARATOR;
+        mkdir($www . 'files', 0777, true);
+        file_put_contents($www . 'files' . DIRECTORY_SEPARATOR . 'a.txt', 'a');
+        $backup = [
+            'www_root' => Configure::read('App.www_root'),
+            'plugins' => Configure::read('CuStatic.plugins'),
+            'copyRootFiles' => Configure::read('CuStatic.copyRootFiles'),
+            'rsyncCommand' => Configure::read('CuStatic.rsyncCommand'),
+        ];
+        Configure::write('App.www_root', $www);
+        Configure::write('CuStatic.plugins', []);
+        Configure::write('CuStatic.copyRootFiles', false);
+        Configure::write('CuStatic.rsyncCommand', '');
+        \Cake\Log\Log::setConfig('cu_static_test_array', [
+            'className' => 'Array',
+            'levels' => ['info'],
+            'scopes' => [LOG_CU_STATIC],
+        ]);
+        try {
+            $this->CuStaticService->copyAssets($out, []);
+            $logs = \Cake\Log\Log::engine('cu_static_test_array')->read();
+            $src = $www . 'files' . DIRECTORY_SEPARATOR;
+            $before = null;
+            $after = null;
+            foreach ($logs as $i => $line) {
+                if ($before === null && str_contains($line, '[copyAssets] コピーしています… ' . $src)) {
+                    $before = $i;
+                }
+                if ($after === null && preg_match('/\[copyAssets\] ' . preg_quote($src, '/') . '（\d+ 秒）/u', $line)) {
+                    $after = $i;
+                }
+            }
+            $this->assertNotNull($before, 'コピー前のログが無い');
+            $this->assertNotNull($after, 'コピー後のログが無い');
+            $this->assertLessThan($after, $before);
+            $this->assertFileExists($out . 'files' . DIRECTORY_SEPARATOR . 'a.txt');
+        } finally {
+            \Cake\Log\Log::drop('cu_static_test_array');
+            Configure::write('App.www_root', $backup['www_root']);
+            Configure::write('CuStatic.plugins', $backup['plugins']);
+            Configure::write('CuStatic.copyRootFiles', $backup['copyRootFiles']);
+            Configure::write('CuStatic.rsyncCommand', $backup['rsyncCommand']);
+            exec('rm -rf ' . escapeshellarg(rtrim($tmp, DIRECTORY_SEPARATOR)));
+        }
+    }
+
+    /**
      * 設定 redirects を _redirects の形式で書き出す。空なら書き出さない
      */
     public function testWriteRedirects(): void

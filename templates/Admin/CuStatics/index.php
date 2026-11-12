@@ -221,7 +221,7 @@ $this->BcAdmin->setTitle('静的HTML出力');
 					if (status) {
 						msgEl.textContent = max > 0
 							? '処理中 (' + Math.round(progress / max * 100) + ' %)'
-							: '処理を開始しています…';
+							: '準備中（出力先の初期化・ファイルのコピーなど）… 進み具合は下のログで確認できます';
 					} else if (pending) {
 						msgEl.textContent = '起動中…';
 					} else if (max > 0 && progress >= max) {

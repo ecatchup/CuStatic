@@ -171,6 +171,8 @@ class CuStaticService implements CuStaticServiceInterface
                 if (is_dir($exportPath)) {
                     // 破壊的削除の前に、アプリ本体・webroot 等の重要ディレクトリを指していないか検証する
                     $this->assertSafeExportPath($exportPath);
+                    // 件数の多いサイトでは時間がかかるため、始める前にログを出す（管理画面のログ表示で進み具合が分かるように）
+                    $this->writeLog(sprintf('[export][%s] 出力先を空にしています…', $this->modeLabel));
                     // 出力先そのものは消さずに中身だけを消す。
                     // 消して作り直すと、サーバで付けた持ち主・グループ・既定の ACL・SELinux のラベルが外れる
                     $this->deleteDirectory($exportPath, true);
@@ -704,8 +706,11 @@ class CuStaticService implements CuStaticServiceInterface
             if (!is_dir($src)) {
                 continue;
             }
+            // files など大きいフォルダは数分かかるため、始める前にもログを出す（管理画面のログ表示で進み具合が分かるように）
+            $this->writeLog('[copyAssets] コピーしています… ' . $src);
+            $started = microtime(true);
             $this->copyDirectory($src, $exportPath . $dir . DIRECTORY_SEPARATOR, $rsyncCommand);
-            $this->writeLog('[copyAssets] ' . $src);
+            $this->writeLog(sprintf('[copyAssets] %s（%d 秒）', $src, (int) round(microtime(true) - $started)));
         }
 
         // テーマ本体 + テーマ梱包プラグイン + 設定プラグインの webroot をコピー
@@ -1882,6 +1887,7 @@ class CuStaticService implements CuStaticServiceInterface
             return;
         }
         $rsyncCommand = Configure::read('CuStatic.rsyncCommand') ?? '';
+        $this->writeLog('[syncUploadFiles] files を同期しています…');
         $copied = $this->copyDirectory($src, $exportPath . 'files' . DIRECTORY_SEPARATOR, $rsyncCommand);
         if ($copied < 0) {
             $this->writeLog('[syncUploadFiles] files を同期しました（rsync）');
