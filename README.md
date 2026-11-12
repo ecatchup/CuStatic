@@ -67,7 +67,7 @@ CuStatic は、baserCMS で作成した Web サイト内のページを **静的
 |------|--------|------|
 | `CuStatic.defaultWorkers` | `4` | 既定の並列ワーカー数 |
 | `CuStatic.cronEnabled` | `false` | 差分書き出し（CRON）機能の有効化フラグ |
-| `CuStatic.types` | `Page` / `ContentFolder` / `BlogContent` | 書き出し対象のコンテンツ種別 |
+| `CuStatic.types` | `Page` / `ContentFolder` / `BlogContent` / `CustomContent` / `ContentLink` | 書き出し対象のコンテンツ種別。`ContentLink`（コンテンツリンク）は、動的サイトが返すリンク先へ移動するページを固定ページと同じ名前で書き出す（出力対象の「固定ページ」の設定に従う） |
 | `CuStatic.plugins` | `BaserCore` / `BcBlog` / `BcBurgerEditor` / `BcCustomContent` / `BcFront` | `webroot` コピー対象のプラグイン（無効・未導入のものはスキップ） |
 | `CuStatic.httpMaxAttempts` | `3` | HTML取得の最大試行回数（5xx・接続エラー時にリトライ。1でリトライなし） |
 | `CuStatic.chunkSize` | `1000` | ブログ投稿集計時のチャンク件数（大量投稿時のメモリ抑制） |
