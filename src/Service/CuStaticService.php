@@ -181,6 +181,7 @@ class CuStaticService implements CuStaticServiceInterface
                 // 静的アセットをコピー（対象サイトのテーマ + テーマ梱包プラグイン + 設定プラグイン）
                 $themes = $this->getTargetThemes($siteIds);
                 $this->copyAssets($exportPath, $themes);
+                $this->writeRedirects($exportPath);
 
                 $jobs = $this->buildJobs($siteIds, $targetConfig, $exportPath, $baseUrl);
             } else {
@@ -787,6 +788,40 @@ class CuStaticService implements CuStaticServiceInterface
             $copied[] = $name;
         }
         return $copied;
+    }
+
+    /**
+     * 設定 `CuStatic.redirects` を、出力先のリダイレクトの一覧のファイル（既定 `_redirects`）に書き出す
+     *
+     * 1行に「元のURL 先のURL 301」。Cloudflare Workers Static Assets・Pages、Netlify が読む形式。
+     * 一覧が空なら書き出さない。
+     *
+     * @param string $exportPath 出力先フォルダパス（末尾の区切り文字つき）
+     * @return int 書き出した行数
+     */
+    public function writeRedirects(string $exportPath): int
+    {
+        $redirects = (array) (Configure::read('CuStatic.redirects') ?? []);
+        $file = (string) (Configure::read('CuStatic.redirectsFile') ?? '_redirects');
+        if (!$redirects || $file === '') {
+            return 0;
+        }
+        $lines = [];
+        foreach ($redirects as $from => $to) {
+            $from = trim((string) $from);
+            $to = trim((string) $to);
+            if ($from === '' || $to === '' || preg_match('/\s/', $from . $to)) {
+                $this->writeLog(sprintf('[writeRedirects] 空・空白を含むため飛ばしました: %s => %s', $from, $to));
+                continue;
+            }
+            $lines[] = $from . ' ' . $to . ' 301';
+        }
+        if (!$lines) {
+            return 0;
+        }
+        file_put_contents($exportPath . basename($file), implode("\n", $lines) . "\n");
+        $this->writeLog(sprintf('[writeRedirects] %s を書き出しました（%d 件）', basename($file), count($lines)));
+        return count($lines);
     }
 
     /**
