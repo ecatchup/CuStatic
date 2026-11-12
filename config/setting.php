@@ -55,6 +55,13 @@ $config = [
         // テーマ側でブログ記事一覧等を埋め込んでいるページ（トップ等）は差分キューに載らないため、
         // ここに指定して一緒に再生成する（例: ['/']）
         'diffExtraUrls' => [],
+        // 全件出力で、出力先に書き出すリダイレクトの一覧（元のURL => 先のURL。301）。
+        // Cloudflare Workers Static Assets・Pages、Netlify の _redirects の形式（1行に「元 先 301」）で書く。
+        // .htaccess の Redirect / RewriteRule のうち、URL が決まっているものを写す（例: ['/old/' => '/new/']）。
+        // 空なら書き出さない。アドオンは CuStatic.afterExport で同じファイルに行を足せる
+        'redirects' => [],
+        // リダイレクトの一覧のファイル名（出力先の直下）
+        'redirectsFile' => '_redirects',
         // 内部リンク・canonical・RSS のURLの書き方。出力ファイルの配置はどちらも同じ。
         // html: /about.html・/company/index.html（拡張子なしのURLを解決できない Apache 等）
         // pretty: /about・/company/（Cloudflare Workers Static Assets・Pages 等、

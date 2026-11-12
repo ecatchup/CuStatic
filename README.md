@@ -74,6 +74,8 @@ CuStatic は、baserCMS で作成した Web サイト内のページを **静的
 | `CuStatic.rsyncCommand` | `''`（PHP でコピー） | アセット（css・js・img・files・プラグインの webroot）のコピーに使う rsync コマンド（例: `rsync -a --delete`）。すべてのコピーに同じ指定が効くので、`files` の一部だけを除外するときはルート固定（`--exclude=/basercms/`）で書く。管理画面からは登録できない |
 | `CuStatic.lockTimeout` | `3600` | 実行ロックの有効期限（秒）。開始からこの秒数を超えた実行中フラグは stale として次回実行が奪取 |
 | `CuStatic.linkStyle` | `html` | 内部リンク・canonical・RSS のURLの書き方。`html` は `/about.html`・`/company/index.html`、`pretty` は `/about`・`/company/`（ページ送りは `/news/index/page-2`）。出力ファイルの配置は同じ。Cloudflare Workers Static Assets・Pages など、拡張子なしのURLで `.html` を返すホスティングでは `pretty` にすると公開URLを動的サイトと同じに保てる |
+| `CuStatic.redirects` | `[]` | 全件出力で、出力先に書き出すリダイレクト（`元のURL => 先のURL`、301）。Cloudflare Workers Static Assets・Pages、Netlify の `_redirects` の形式（1行に「元 先 301」）で書く。`.htaccess` の Redirect・RewriteRule のうち URL が決まっているものを写す。空なら書き出さない。アドオンは `CuStatic.afterExport` で同じファイルに行を足せる |
+| `CuStatic.redirectsFile` | `_redirects` | リダイレクトの一覧のファイル名（出力先の直下） |
 | `CuStatic.rewritePublicUrl` | `true` | 公開URL設定時に、出力内容の取得元URLを公開URLへ書き換えるか |
 | `CuStatic.afterExportCommands` | `[]` | 書き出し完了後に実行するコマンド（CDN キャッシュ削除・デプロイ等）。詳細は [応用機能](docs/advanced.md#書き出し後コマンド) |
 | `CuStatic.afterExportCommandTimeout` | `300` | 書き出し後コマンドの既定タイムアウト（秒） |

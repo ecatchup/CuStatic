@@ -32,6 +32,10 @@ class CuStaticServiceTest extends BcTestCase
     public function setUp(): void
     {
         parent::setUp();
+        // ログの scope（プラグインの config/bootstrap.php で定義。テストでは読まれない）
+        if (!defined('LOG_CU_STATIC')) {
+            define('LOG_CU_STATIC', 'cu_static');
+        }
         $this->CuStaticService = new CuStaticService();
     }
 
@@ -39,6 +43,31 @@ class CuStaticServiceTest extends BcTestCase
     {
         unset($this->CuStaticService);
         parent::tearDown();
+    }
+
+    /**
+     * 設定 redirects を _redirects の形式で書き出す。空なら書き出さない
+     */
+    public function testWriteRedirects(): void
+    {
+        $out = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'custatic_redirects_' . getmypid() . DIRECTORY_SEPARATOR;
+        mkdir($out, 0777, true);
+        try {
+            Configure::write('CuStatic.redirects', []);
+            $this->assertSame(0, $this->CuStaticService->writeRedirects($out));
+            $this->assertFileDoesNotExist($out . '_redirects');
+
+            Configure::write('CuStatic.redirects', [
+                '/license/' => '/about/license',
+                '/old/index.html' => '/new/',
+                '/bad path' => '/x',
+            ]);
+            $this->assertSame(2, $this->CuStaticService->writeRedirects($out));
+            $this->assertSame("/license/ /about/license 301\n/old/index.html /new/ 301\n", file_get_contents($out . '_redirects'));
+        } finally {
+            Configure::delete('CuStatic.redirects');
+            $this->removeDir($out);
+        }
     }
 
     /**
