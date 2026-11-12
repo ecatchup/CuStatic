@@ -16,6 +16,8 @@ $config = [
             'ContentFolder',
             'BlogContent',
             'CustomContent',
+            // コンテンツリンク（リンク先へ移動するページ）。書き出し対象の「固定ページ」の設定に従う
+            'ContentLink',
         ],
         // 出力対象のプラグイン（webroot コピー対象）
         // BaserCore はフッターの baser.power.gif（/baser_core/img/）、

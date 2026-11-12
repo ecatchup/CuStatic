@@ -829,6 +829,8 @@ class CuStaticService implements CuStaticServiceInterface
                     }
                     break;
                 case 'Page':
+                case 'ContentLink':
+                    // コンテンツリンクは、動的サイトがリンク先へ移動するページを返すので、固定ページと同じ名前で書き出す
                     if ($targetConfig[$modePrefix . 'page' . $prefix] ?? true) {
                         $this->addJob($jobs, $baseUrl . '/' . $pageUrl, $exportPath . CuStaticUtil::pageFilePath($pagePath));
                     }
@@ -1075,6 +1077,7 @@ class CuStaticService implements CuStaticServiceInterface
                 $this->addJob($jobs, $baseUrl . '/' . $pageUrl, $exportPath . $pagePath . 'index.html');
                 break;
             case 'Page':
+            case 'ContentLink':
                 $this->addJob($jobs, $baseUrl . '/' . $pageUrl, $exportPath . CuStaticUtil::pageFilePath($pagePath));
                 break;
             case 'BlogContent':
@@ -1212,7 +1215,7 @@ class CuStaticService implements CuStaticServiceInterface
                 // ブログ/カスタムコンテンツ全体の削除 → 配下ディレクトリごと削除
                 return [rtrim($exportPath . $pagePath, DIRECTORY_SEPARATOR)];
             default:
-                // Page / BlogPost / CustomEntry
+                // Page / ContentLink / BlogPost / CustomEntry
                 return [$exportPath . CuStaticUtil::pageFilePath($pagePath)];
         }
     }

@@ -64,6 +64,30 @@ class CuStaticServiceTest extends BcTestCase
     }
 
     /**
+     * 差分のキューのコンテンツリンクは、固定ページと同じ名前で書き出す
+     */
+    public function testAddDiffJobsForContentLink(): void
+    {
+        $jobs = [];
+        $item = (object) ['type' => 'ContentLink', 'url' => '/service/github', 'site_id' => 0, 'entity_id' => 1];
+        $this->execPrivateMethod($this->CuStaticService, 'addDiffJobsForItem', [$item, [], '/tmp/export/', 'https://example.com', &$jobs]);
+        $jobs = array_values($jobs);
+        $this->assertCount(1, $jobs);
+        $this->assertSame('https://example.com/service/github', $jobs[0]['url']);
+        $this->assertSame('/tmp/export/service/github.html', $jobs[0]['path']);
+    }
+
+    /**
+     * 削除されたコンテンツリンクは、固定ページと同じ名前のファイルを消す
+     */
+    public function testStaticPathsForContentLink(): void
+    {
+        $item = (object) ['type' => 'ContentLink', 'url' => '/service/github'];
+        $paths = $this->execPrivateMethod($this->CuStaticService, 'staticPathsForItem', [$item, '/tmp/export/']);
+        $this->assertSame(['/tmp/export/service/github.html'], $paths);
+    }
+
+    /**
      * copyDirectory（PHPコピー）は増分方式で、変更のないファイルをスキップする
      *
      * 差分出力のアップロードファイル同期（syncUploadFiles）が毎回全ファイルを
