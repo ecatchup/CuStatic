@@ -10,6 +10,11 @@ declare(strict_types=1);
 namespace CuStatic\Test\TestCase\Service;
 
 use BaserCore\TestSuite\BcTestCase;
+use BaserCore\Test\Factory\UserFactory;
+use BaserCore\Test\Factory\UserGroupFactory;
+use BaserCore\Test\Factory\UsersUserGroupFactory;
+use BcBlog\Test\Factory\BlogCategoryFactory;
+use BcBlog\Test\Factory\BlogTagFactory;
 use Cake\Core\Configure;
 use CuStatic\Service\CuStaticService;
 
@@ -162,6 +167,68 @@ class CuStaticServiceTest extends BcTestCase
     /**
      * webroot 直下のファイル・フォルダをコピーし、コピーしないものは飛ばす
      */
+    /**
+     * カテゴリ別件数のロールアップ（記事が 0 件のカテゴリを含めるか）
+     */
+    public function testRollupCategoryCountsIncludeEmpty(): void
+    {
+        $this->loadPlugins(['BcBlog']);
+        BlogCategoryFactory::make(['id' => 101, 'blog_content_id' => 1, 'name' => 'has-posts', 'lft' => 1, 'rght' => 2])->persist();
+        BlogCategoryFactory::make(['id' => 102, 'blog_content_id' => 1, 'name' => 'empty', 'lft' => 3, 'rght' => 4])->persist();
+
+        // 既定（含めない）: 記事のあるカテゴリだけ
+        $result = $this->execPrivateMethod($this->CuStaticService, 'rollupCategoryCounts', [1, [101 => 2]]);
+        $this->assertSame(['has-posts' => 2], $result);
+
+        // 含める: 記事が 0 件のカテゴリも件数 0 で返る
+        $result = $this->execPrivateMethod($this->CuStaticService, 'rollupCategoryCounts', [1, [101 => 2], true]);
+        $this->assertSame(['has-posts' => 2, 'empty' => 0], $result);
+    }
+
+    /**
+     * 記事が 0 件のタグ・著者（exportEmptyArchives の tag・author で足すもの）
+     */
+    public function testEmptyTagAndAuthorCounts(): void
+    {
+        $this->loadPlugins(['BcBlog']);
+        BlogTagFactory::make(['id' => 201, 'name' => 'used'])->persist();
+        BlogTagFactory::make(['id' => 202, 'name' => 'unused'])->persist();
+        UserFactory::make(['id' => 301, 'status' => true])->persist();
+        UserFactory::make(['id' => 302, 'status' => true])->persist();
+        UserFactory::make(['id' => 303, 'status' => false])->persist();
+        UserFactory::make(['id' => 304, 'status' => true])->persist();
+        // 利用できるユーザーは、どれかのユーザーグループに属する（304 は属さない）
+        UserGroupFactory::make(['id' => 1, 'name' => 'admins'])->persist();
+        foreach ([301, 302, 303] as $userId) {
+            UsersUserGroupFactory::make(['user_id' => $userId, 'user_group_id' => 1])->persist();
+        }
+
+        // 記事のあるタグは除き、ほかのタグを件数 0 で返す
+        $result = $this->execPrivateMethod($this->CuStaticService, 'emptyTagCounts', [['used' => 3]]);
+        $this->assertSame(['unused' => 0], $result);
+
+        // 記事のある著者は除き、利用できるユーザー（status が有効）を件数 0 で返す
+        $result = $this->execPrivateMethod($this->CuStaticService, 'emptyAuthorCounts', [[301 => 2]]);
+        $this->assertArrayHasKey(302, $result);
+        $this->assertArrayNotHasKey(301, $result);
+        $this->assertArrayNotHasKey(303, $result);
+        $this->assertArrayNotHasKey(304, $result);
+        $this->assertSame(0, $result[302]);
+    }
+
+    /**
+     * 設定 exportEmptyArchives の判定
+     */
+    public function testExportsEmptyArchive(): void
+    {
+        Configure::write('CuStatic.exportEmptyArchives', ['category', 'tag']);
+        $this->assertTrue($this->execPrivateMethod($this->CuStaticService, 'exportsEmptyArchive', ['category']));
+        $this->assertTrue($this->execPrivateMethod($this->CuStaticService, 'exportsEmptyArchive', ['tag']));
+        $this->assertFalse($this->execPrivateMethod($this->CuStaticService, 'exportsEmptyArchive', ['author']));
+        Configure::write('CuStatic.exportEmptyArchives', []);
+        $this->assertFalse($this->execPrivateMethod($this->CuStaticService, 'exportsEmptyArchive', ['category']));
+    }
+
     public function testCopyRootFiles(): void
     {
         $base = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'custatic_root_' . getmypid();

@@ -72,6 +72,7 @@ CuStatic は、baserCMS で作成した Web サイト内のページを **静的
 | `CuStatic.httpMaxAttempts` | `3` | HTML取得の最大試行回数（5xx・接続エラー時にリトライ。1でリトライなし） |
 | `CuStatic.chunkSize` | `1000` | ブログ投稿集計時のチャンク件数（大量投稿時のメモリ抑制） |
 | `CuStatic.rsyncCommand` | `''`（PHP でコピー） | アセット（css・js・img・files・プラグインの webroot）のコピーに使う rsync コマンド（例: `rsync -a --delete`）。すべてのコピーに同じ指定が効くので、`files` の一部だけを除外するときはルート固定（`--exclude=/basercms/`）で書く。管理画面からは登録できない |
+| `CuStatic.exportEmptyArchives` | `[]` | 記事が 0 件でも一覧（1ページ目）を書き出すアーカイブの種類（`category`・`tag`・`author`）。動的サイトでは記事の無いカテゴリ・タグ・著者も「記事がありません」の一覧が開くため、テーマで記事の有無に関係なく並べている場合は指定するとリンク切れにならない（例 `['category', 'tag']`）。タグは全タグ、著者は利用できるユーザー全員が対象。日付別は対象外（記事の無い日付が決まらないため） |
 | `CuStatic.copyRootFiles` | `true` | 全件出力で、webroot 直下のファイル・フォルダ（favicon・robots.txt・ads.txt・PDF 等）も出力先へコピーする。css・js・img・files、プラグインのアセット（シンボリックリンク・有効なプラグイン名のフォルダ）、PHP のファイル、`.` で始まるもの（`.htaccess` 等）、`web.config` はコピーしない |
 | `CuStatic.rootExclude` | `[]` | webroot 直下でコピーしないものの名前（例: `['sitemap.xml']`） |
 | `CuStatic.lockTimeout` | `3600` | 実行ロックの有効期限（秒）。開始からこの秒数を超えた実行中フラグは stale として次回実行が奪取 |

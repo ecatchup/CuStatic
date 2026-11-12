@@ -1426,7 +1426,11 @@ class CuStaticService implements CuStaticServiceInterface
 
         // カテゴリ別（子孫カテゴリの投稿も含めてロールアップ。フロント表示と件数・ページ数を一致させる）
         if ($needCategory) {
-            $categoryCounts = $this->rollupCategoryCounts($blogContentId, $agg['categoryDirect']);
+            $categoryCounts = $this->rollupCategoryCounts(
+                $blogContentId,
+                $agg['categoryDirect'],
+                $this->exportsEmptyArchive('category')
+            );
             foreach ($categoryCounts as $categoryName => $count) {
                 $targetUrl = $baseUrl . '/' . $pageUrl . 'archives/category/' . $categoryName;
                 $targetPath = $exportPath . $pagePath . str_replace('/', DIRECTORY_SEPARATOR, 'archives/category/' . $categoryName);
@@ -1437,7 +1441,11 @@ class CuStaticService implements CuStaticServiceInterface
 
         // タグ別（多対多のため junction 経由の GROUP BY で件数のみ取得）
         if ($needTag) {
-            foreach ($this->aggregateTagCounts($blogContentId) as $tagName => $count) {
+            $tagCounts = $this->aggregateTagCounts($blogContentId);
+            if ($this->exportsEmptyArchive('tag')) {
+                $tagCounts += $this->emptyTagCounts($tagCounts);
+            }
+            foreach ($tagCounts as $tagName => $count) {
                 $targetUrl = $baseUrl . '/' . $pageUrl . 'archives/tag/' . $tagName;
                 $targetPath = $exportPath . $pagePath . str_replace('/', DIRECTORY_SEPARATOR, 'archives/tag/' . $tagName);
                 $this->addJob($jobs, $targetUrl, $targetPath . '.html');
@@ -1455,7 +1463,11 @@ class CuStaticService implements CuStaticServiceInterface
 
         // 著者別（URL は user の id を使う。/archives/author/{id}）
         if ($needAuthor) {
-            foreach ($agg['authorCounts'] as $authorId => $count) {
+            $authorCounts = $agg['authorCounts'];
+            if ($this->exportsEmptyArchive('author')) {
+                $authorCounts += $this->emptyAuthorCounts($authorCounts);
+            }
+            foreach ($authorCounts as $authorId => $count) {
                 $targetUrl = $baseUrl . '/' . $pageUrl . 'archives/author/' . $authorId;
                 $targetPath = $exportPath . $pagePath . str_replace('/', DIRECTORY_SEPARATOR, 'archives/author/' . $authorId);
                 $this->addJob($jobs, $targetUrl, $targetPath . '.html');
@@ -1584,9 +1596,10 @@ class CuStaticService implements CuStaticServiceInterface
      *
      * @param int $blogContentId
      * @param array<int,int> $directCounts カテゴリID => 直下件数
-     * @return array<string,int> カテゴリ名 => ロールアップ後件数（件数 0 は除外）
+     * @param bool $includeEmpty 件数 0 のカテゴリも含める（設定 exportEmptyArchives に category）
+     * @return array<string,int> カテゴリ名 => ロールアップ後件数（$includeEmpty が false なら件数 0 は除外）
      */
-    private function rollupCategoryCounts(int $blogContentId, array $directCounts): array
+    private function rollupCategoryCounts(int $blogContentId, array $directCounts, bool $includeEmpty = false): array
     {
         $BlogCategories = TableRegistry::getTableLocator()->get('BcBlog.BlogCategories');
         $categories = $BlogCategories->find()
@@ -1615,11 +1628,77 @@ class CuStaticService implements CuStaticServiceInterface
                 $count += $directCounts[(int) $target['id']] ?? 0;
             }
 
-            if ($count > 0) {
+            if ($count > 0 || $includeEmpty) {
                 $result[(string) $category['name']] = $count;
             }
         }
 
+        return $result;
+    }
+
+    /**
+     * 記事が 0 件のアーカイブ（一覧）も書き出すか（設定 exportEmptyArchives）
+     *
+     * @param string $type category / tag / author
+     * @return bool
+     */
+    private function exportsEmptyArchive(string $type): bool
+    {
+        return in_array($type, (array) Configure::read('CuStatic.exportEmptyArchives'), true);
+    }
+
+    /**
+     * 記事が 0 件のタグ（タグ名 => 0）。タグはブログをまたいで共通なので、全タグのうち件数の無いもの
+     *
+     * @param array<string,int> $tagCounts 記事のあるタグ（タグ名 => 件数）
+     * @return array<string,int>
+     */
+    private function emptyTagCounts(array $tagCounts): array
+    {
+        // id も選ぶ。BlogTags の検索にほかのプラグインが contain を足すと、id が無い検索は止まる
+        // （例: BlogTagGroup がタググループを一緒に取る）
+        $names = TableRegistry::getTableLocator()->get('BcBlog.BlogTags')->find()
+            ->select(['BlogTags.id', 'BlogTags.name'])
+            ->disableHydration()
+            ->all()
+            ->extract('name')
+            ->toList();
+        $result = [];
+        foreach ($names as $name) {
+            if (!isset($tagCounts[(string) $name])) {
+                $result[(string) $name] = 0;
+            }
+        }
+        return $result;
+    }
+
+    /**
+     * 記事が 0 件の著者（ユーザーID => 0）
+     *
+     * フロントの著者別一覧と同じく、利用できるユーザー（有効で、どれかのユーザーグループに属する）だけ。
+     * UsersTable::findAvailable() はリクエストを前提にしており、コマンドからの書き出しでは使えないため、
+     * フロント（プレフィックスなし）のときと同じ条件をここで書く。
+     *
+     * @param array<int,int> $authorCounts 記事のある著者（ユーザーID => 件数）
+     * @return array<int,int>
+     */
+    private function emptyAuthorCounts(array $authorCounts): array
+    {
+        $ids = TableRegistry::getTableLocator()->get('BaserCore.Users')->find()
+            ->select(['Users.id'])
+            ->where(['Users.status' => true])
+            ->innerJoinWith('UserGroups')
+            ->distinct(['Users.id'])
+            ->disableHydration()
+            ->all()
+            ->extract('id')
+            ->toList();
+        $result = [];
+        foreach ($ids as $id) {
+            if (!isset($authorCounts[(int) $id])) {
+                $result[(int) $id] = 0;
+            }
+        }
         return $result;
     }
 
