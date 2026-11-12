@@ -107,6 +107,48 @@ class CuStaticServiceTest extends BcTestCase
     }
 
     /**
+     * webroot 直下のファイル・フォルダをコピーし、コピーしないものは飛ばす
+     */
+    public function testCopyRootFiles(): void
+    {
+        $base = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'custatic_root_' . getmypid();
+        $www = $base . DIRECTORY_SEPARATOR . 'webroot' . DIRECTORY_SEPARATOR;
+        $out = $www . 'static_out' . DIRECTORY_SEPARATOR;
+        mkdir($www . 'pdf', 0777, true);
+        mkdir($www . 'css', 0777, true);
+        mkdir($www . 'bc_blog', 0777, true);
+        mkdir($www . 'old', 0777, true);
+        mkdir($base . DIRECTORY_SEPARATOR . 'assets', 0777, true);
+        mkdir($out, 0777, true);
+        file_put_contents($www . 'favicon.ico', 'ICO');
+        file_put_contents($www . 'robots.txt', 'User-agent: *');
+        file_put_contents($www . 'pdf' . DIRECTORY_SEPARATOR . 'a.pdf', 'PDF');
+        file_put_contents($www . 'index.php', '<?php');
+        file_put_contents($www . '.htaccess', 'RewriteEngine On');
+        file_put_contents($www . 'web.config', '<configuration/>');
+        file_put_contents($www . 'css' . DIRECTORY_SEPARATOR . 'style.css', 'body{}');
+        file_put_contents($www . 'bc_blog' . DIRECTORY_SEPARATOR . 'x.js', 'x');
+        file_put_contents($www . 'old' . DIRECTORY_SEPARATOR . 'b.txt', 'B');
+        symlink($base . DIRECTORY_SEPARATOR . 'assets', $www . 'cu_static');
+
+        try {
+            Configure::write('CuStatic.rootExclude', ['old']);
+            $copied = $this->CuStaticService->copyRootFiles($www, $out);
+            sort($copied);
+            $this->assertSame(['favicon.ico', 'pdf', 'robots.txt'], $copied);
+            $this->assertSame('ICO', file_get_contents($out . 'favicon.ico'));
+            $this->assertSame('PDF', file_get_contents($out . 'pdf' . DIRECTORY_SEPARATOR . 'a.pdf'));
+            foreach (['index.php', '.htaccess', 'web.config', 'css', 'bc_blog', 'old', 'cu_static', 'static_out'] as $name) {
+                $this->assertFileDoesNotExist($out . $name, $name);
+            }
+        } finally {
+            Configure::delete('CuStatic.rootExclude');
+            unlink($www . 'cu_static');
+            $this->removeDir($base);
+        }
+    }
+
+    /**
      * テスト用の一時ディレクトリを再帰削除する
      */
     private function removeDir(string $path): void

@@ -72,6 +72,8 @@ CuStatic は、baserCMS で作成した Web サイト内のページを **静的
 | `CuStatic.httpMaxAttempts` | `3` | HTML取得の最大試行回数（5xx・接続エラー時にリトライ。1でリトライなし） |
 | `CuStatic.chunkSize` | `1000` | ブログ投稿集計時のチャンク件数（大量投稿時のメモリ抑制） |
 | `CuStatic.rsyncCommand` | `''`（PHP でコピー） | アセット（css・js・img・files・プラグインの webroot）のコピーに使う rsync コマンド（例: `rsync -a --delete`）。すべてのコピーに同じ指定が効くので、`files` の一部だけを除外するときはルート固定（`--exclude=/basercms/`）で書く。管理画面からは登録できない |
+| `CuStatic.copyRootFiles` | `true` | 全件出力で、webroot 直下のファイル・フォルダ（favicon・robots.txt・ads.txt・PDF 等）も出力先へコピーする。css・js・img・files、プラグインのアセット（シンボリックリンク・有効なプラグイン名のフォルダ）、PHP のファイル、`.` で始まるもの（`.htaccess` 等）、`web.config` はコピーしない |
+| `CuStatic.rootExclude` | `[]` | webroot 直下でコピーしないものの名前（例: `['sitemap.xml']`） |
 | `CuStatic.lockTimeout` | `3600` | 実行ロックの有効期限（秒）。開始からこの秒数を超えた実行中フラグは stale として次回実行が奪取 |
 | `CuStatic.linkStyle` | `html` | 内部リンク・canonical・RSS のURLの書き方。`html` は `/about.html`・`/company/index.html`、`pretty` は `/about`・`/company/`（ページ送りは `/news/index/page-2`）。出力ファイルの配置は同じ。Cloudflare Workers Static Assets・Pages など、拡張子なしのURLで `.html` を返すホスティングでは `pretty` にすると公開URLを動的サイトと同じに保てる |
 | `CuStatic.rewritePublicUrl` | `true` | 公開URL設定時に、出力内容の取得元URLを公開URLへ書き換えるか |

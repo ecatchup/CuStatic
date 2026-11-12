@@ -726,6 +726,67 @@ class CuStaticService implements CuStaticServiceInterface
             $this->copyDirectory($src, $dst, $rsyncCommand);
             $this->writeLog('[copyAssets] plugin ' . $pluginName . ' -> ' . $dst);
         }
+
+        // webroot 直下のファイル・フォルダ（favicon・robots.txt 等）
+        if (Configure::read('CuStatic.copyRootFiles') ?? true) {
+            $copied = $this->copyRootFiles($baseDir, $exportPath);
+            if ($copied) {
+                $this->writeLog('[copyAssets] webroot 直下: ' . implode(', ', $copied));
+            }
+        }
+    }
+
+    /**
+     * webroot 直下のファイル・フォルダを出力先へコピーする
+     *
+     * favicon・apple-touch-icon・robots.txt・ads.txt・PDF など、テーマやプラグインに属さず
+     * webroot 直下に置いたものを静的サイトにも載せる。次のものはコピーしない。
+     * - css・js・img・files（copyAssets() がコピーする）
+     * - プラグインのアセット（シンボリックリンク、有効なプラグイン名のフォルダ）
+     * - PHP のファイル、. で始まるもの（.htaccess 等）、web.config
+     * - 出力先そのもの（webroot の中に出力先を作った場合）
+     * - 設定 `CuStatic.rootExclude` に挙げた名前
+     *
+     * @param string $wwwRoot webroot のパス（末尾の区切り文字つき）
+     * @param string $exportPath 出力先フォルダパス（末尾の区切り文字つき）
+     * @return array<int, string> コピーした名前
+     */
+    public function copyRootFiles(string $wwwRoot, string $exportPath): array
+    {
+        $exclude = array_merge(
+            ['css', 'js', 'img', 'files', 'web.config'],
+            array_map(fn($name) => \Cake\Utility\Inflector::underscore($name), \Cake\Core\Plugin::loaded()),
+            (array) (Configure::read('CuStatic.rootExclude') ?? [])
+        );
+        $exportReal = realpath($exportPath) ?: rtrim($exportPath, DIRECTORY_SEPARATOR);
+        $rsyncCommand = Configure::read('CuStatic.rsyncCommand') ?? '';
+
+        $copied = [];
+        foreach (scandir($wwwRoot) ?: [] as $name) {
+            $src = $wwwRoot . $name;
+            if (
+                $name === '' || $name[0] === '.'
+                || in_array($name, $exclude, true)
+                || is_link($src)
+                || (is_file($src) && strtolower(pathinfo($name, PATHINFO_EXTENSION)) === 'php')
+            ) {
+                continue;
+            }
+            if (is_dir($src)) {
+                $srcReal = realpath($src) ?: $src;
+                // 出力先が webroot の中にあるとき、出力先そのもの・出力先を含むフォルダはコピーしない
+                if (str_starts_with($exportReal . DIRECTORY_SEPARATOR, $srcReal . DIRECTORY_SEPARATOR)) {
+                    continue;
+                }
+                $this->copyDirectory($src . DIRECTORY_SEPARATOR, $exportPath . $name . DIRECTORY_SEPARATOR, $rsyncCommand);
+            } elseif (is_file($src)) {
+                copy($src, $exportPath . $name);
+            } else {
+                continue;
+            }
+            $copied[] = $name;
+        }
+        return $copied;
     }
 
     /**
