@@ -458,7 +458,7 @@ class CuStaticService implements CuStaticServiceInterface
 
         if ($extension === 'html') {
             // 生成HTMLのフィルタフック。アドオンは <script>/<link> の注入や
-            // 追加のリンク書き換え等に利用できる。リスナーが文字列を返せば置き換わる。
+            // 追加のリンク書き換え等に利用できる。リスナーが $event->setResult() に文字列を入れると置き換わる（値を返すのは CakePHP 5.2 から非推奨）。
             // 並列（fork子）でも発火する（グローバル登録リスナーは fork 前に登録済み）。
             $filtered = $this->dispatchEvent('CuStatic.filterHtml', [
                 'html' => $content,
