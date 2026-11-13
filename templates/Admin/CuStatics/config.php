@@ -7,6 +7,7 @@
  * @var \CuStatic\Model\Entity\CuStaticConfig|null $config
  * @var array $sites サイト一覧 [id => display_name]
  * @var array $blogContentsBySite ブログコンテンツ一覧 [site_id => Content[]]
+ * @var array $blogPostCounts ブログごとの公開中の記事の数 [blog_content_id => int]
  */
 use Cake\Core\Configure;
 
@@ -109,14 +110,31 @@ $targetConfig = json_decode($config->target_config ?? '{}', true) ?? [];
  * @param string $modePrefix  'main_' または 'diff_'
  * @param bool   $isDiff      差分モード追加オプションを出すか
  */
-$renderSiteSection = function(string $modePrefix, bool $isDiff) use ($sites, $blogContentsBySite, $customContentsBySite, $targetConfig): void {
+$blogPostCounts = $blogPostCounts ?? [];
+/**
+ * ブログそのものが公開中か（公開状態・公開期間）。非公開のブログは書き出しの対象にならない
+ */
+$isBlogPublished = function ($content): bool {
+    if (!$content->status) {
+        return false;
+    }
+    $now = time();
+    if ($content->publish_begin && strtotime((string) $content->publish_begin) > $now) {
+        return false;
+    }
+    if ($content->publish_end && strtotime((string) $content->publish_end) < $now) {
+        return false;
+    }
+    return true;
+};
+$renderSiteSection = function(string $modePrefix, bool $isDiff) use ($sites, $blogContentsBySite, $customContentsBySite, $targetConfig, $blogPostCounts, $isBlogPublished): void {
     foreach ($sites as $siteId => $siteName):
 ?>
 	<div class="section">
-		<h3 class="bca-main__heading" data-bca-heading-size="sm"><?= h($siteName) ?></h3>
+		<h3 class="bca-main__heading cu-static-toggle-site" data-bca-heading-size="sm" title="クリックすると、このサイトのチェックをまとめて ON/OFF します"><?= h($siteName) ?></h3>
 		<table class="form-table bca-form-table">
 			<tr>
-				<th class="bca-form-table__label">ページ設定</th>
+				<th class="bca-form-table__label cu-static-toggle-row" title="クリックすると、この行のチェックをまとめて ON/OFF します">ページ設定</th>
 				<td class="col-input bca-form-table__input">
 					<?php
 					foreach ([
@@ -137,7 +155,12 @@ $renderSiteSection = function(string $modePrefix, bool $isDiff) use ($sites, $bl
 					<?php $blogId = $blogContent->entity_id;
 					$prefix = $modePrefix . $siteId . '_' . $blogId; ?>
 					<tr>
-						<th class="bca-form-table__label"><?= h($blogContent->title) ?></th>
+						<?php $published = $isBlogPublished($blogContent);
+						$postCount = (int) ($blogPostCounts[$blogId] ?? 0); ?>
+						<th class="bca-form-table__label cu-static-toggle-row" title="クリックすると、この行のチェックをまとめて ON/OFF します">
+							<?= h($blogContent->title) ?>
+							<br><small class="cu-static-blog-status<?= $published ? '' : ' is-unpublished' ?>"><?= $published ? '公開中' : '非公開（書き出しません）' ?>・記事 <?= $postCount ?> 件</small>
+						</th>
 						<td class="col-input bca-form-table__input">
 							<?php
 							foreach ([
@@ -186,7 +209,7 @@ $renderSiteSection = function(string $modePrefix, bool $isDiff) use ($sites, $bl
 					<?php $customContentId = $customContent->entity_id;
 					$prefix = $modePrefix . $siteId . '_' . $customContentId; ?>
 					<tr>
-						<th class="bca-form-table__label"><?= h($customContent->title) ?></th>
+						<th class="bca-form-table__label cu-static-toggle-row" title="クリックすると、この行のチェックをまとめて ON/OFF します"><?= h($customContent->title) ?></th>
 						<td class="col-input bca-form-table__input">
 							<?php
 							foreach ([
@@ -284,8 +307,32 @@ $renderSiteSection = function(string $modePrefix, bool $isDiff) use ($sites, $bl
 
 <style>
 .cu-static-warning { color: red; font-weight: bold; margin: 5px 0; }
+.cu-static-toggle-site, .cu-static-toggle-row { cursor: pointer; }
+.cu-static-blog-status { font-weight: normal; color: #2e7d32; }
+.cu-static-blog-status.is-unpublished { color: #c62828; }
 </style>
 <script>
+(function() {
+	// サイト名・行の名前をクリックすると、その中のチェックをまとめて ON/OFF する（最初のチェックの逆にそろえる。4系と同じ）
+	function toggleAll(container) {
+		var boxes = container.querySelectorAll('input[type=checkbox]');
+		if (!boxes.length) return;
+		var checked = !boxes[0].checked;
+		boxes.forEach(function(box) { box.checked = checked; });
+	}
+	document.querySelectorAll('.cu-static-toggle-site').forEach(function(el) {
+		el.addEventListener('click', function() {
+			var table = el.parentNode.querySelector('table');
+			if (table) toggleAll(table);
+		});
+	});
+	document.querySelectorAll('.cu-static-toggle-row').forEach(function(el) {
+		el.addEventListener('click', function() {
+			var td = el.nextElementSibling;
+			if (td) toggleAll(td);
+		});
+	});
+})();
 (function() {
 	var statusEl = document.getElementById('CuStaticStatus');
 	var changeEl = document.getElementById('CuStaticStatusChange');

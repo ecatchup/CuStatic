@@ -157,6 +157,21 @@ class CuStaticsController extends CuStaticAppController
         }
         $this->set('blogContentsBySite', $blogContentsBySite);
 
+        // ブログごとの公開中の記事の数（使っていないブログを見分ける目安）
+        $blogPostCounts = [];
+        $blogContentIds = array_map(fn($c) => (int) $c->entity_id, $blogContents->toList());
+        if ($blogContentIds) {
+            $blogPostCounts = $this->fetchTable('BcBlog.BlogPosts')->find()
+                ->select(['blog_content_id', 'count' => $this->fetchTable('BcBlog.BlogPosts')->find()->func()->count('*')])
+                ->where(['blog_content_id IN' => $blogContentIds, 'status' => true])
+                ->groupBy(['blog_content_id'])
+                ->disableHydration()
+                ->all()
+                ->combine('blog_content_id', 'count')
+                ->toArray();
+        }
+        $this->set('blogPostCounts', $blogPostCounts);
+
         // カスタムコンテンツ一覧（サイト別）
         $customContents = $Contents->find()
             ->where(['Contents.plugin' => 'BcCustomContent', 'Contents.type' => 'CustomContent'])
