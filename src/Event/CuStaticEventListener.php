@@ -212,7 +212,7 @@ class CuStaticEventListener extends BcModelEventListener
 
         $Contents = TableRegistry::getTableLocator()->get('BaserCore.Contents');
         $content = $Contents->find()
-            ->where(['id' => $entity->id])
+            ->where(['Contents.id' => $entity->id])
             ->first();
         if ($content) {
             return $content;

@@ -1236,7 +1236,7 @@ class CuStaticService implements CuStaticServiceInterface
     {
         if ($item->type === 'BlogPost') {
             $BlogPosts = TableRegistry::getTableLocator()->get('BcBlog.BlogPosts');
-            $post = $BlogPosts->find()->where(['id' => $item->entity_id])->first();
+            $post = $BlogPosts->find()->where(['BlogPosts.id' => $item->entity_id])->first();
             if (!$post) {
                 return ['state' => 'gone', 'futureEnd' => false];
             }
@@ -1265,7 +1265,7 @@ class CuStaticService implements CuStaticServiceInterface
         }
 
         // Page / ContentFolder / BlogContent / CustomContent は Contents で判定
-        $content = $this->Contents->find()->where(['id' => $item->content_id])->first();
+        $content = $this->Contents->find()->where(['Contents.id' => $item->content_id])->first();
         if (!$content) {
             return ['state' => 'gone', 'futureEnd' => false];
         }
